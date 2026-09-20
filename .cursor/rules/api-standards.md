@@ -48,9 +48,7 @@
   - `409 Conflict` for conflicting state or duplicate business constraints
   - `422 Unprocessable Entity` when validation fails at the business level
   - `500 Internal Server Error` only for unexpected server-side failures
-- Do not invent custom success semantics that conflict with standard HTTP behavior.
-- Return consistent error codes across similar failure scenarios.
-- Use the most precise code that matches the real result.
+- Use `422` only if the project explicitly adopts it as a consistent validation convention.
 
 ## 5. Request and response structure
 
@@ -93,29 +91,24 @@
 ## 9. Error response format and exception mapping
 
 - Use a consistent error response structure across the API.
-- Include clear error metadata such as a message, error code or category, and relevant details when useful.
-- Avoid leaking internal implementation details, stack traces, or sensitive system information in API responses.
-- Map exceptions to appropriate HTTP responses at the boundary layer.
-- Keep error semantics consistent across controllers and services.
-- Prefer predictable error contracts over ad hoc response shapes.
+- At minimum, an error response should communicate:
+   - HTTP status
+   - machine-readable error code/category
+   - human-readable message
+    - validation details when applicable
+-Do not expose stack traces, SQL errors, class names, or internal implementation details.
 
 ## 10. Pagination, sorting, and filtering
 
-- Use explicit query parameters for pagination, sorting, and filtering when returning lists.
-- Prefer standard, predictable conventions such as page number/size or offset/limit patterns when appropriate.
-- Provide stable, documented sorting semantics and avoid ambiguous defaults.
-- Keep filtering explicit and consistent with resource fields.
-- Return metadata that helps clients navigate results when pagination is used.
-- Do not overload APIs with large, ambiguous query parameter combinations when a smaller, clearer contract is sufficient.
+- Implement filtering and search required by the application specification.
+-Pagination and sorting should be introduced only when required by the specification or justified by expected data volume.
+-Do not add pagination solely for architectural completeness.
 
 ## 11. API versioning
 
-- Version APIs intentionally when a change would break existing clients or contracts.
-- Prefer a clear, predictable versioning approach that matches the project’s needs.
-- Keep versioning strategy explicit and documented.
-- Do not break existing API contracts without a deliberate migration or compatibility plan.
-- Prefer additive and backward-compatible changes when possible.
-- Avoid versioning every minor change when the API can remain compatible instead.
+- This application does not require API versioning initially.
+-Do not introduce version prefixes such as `/v1` unless there is a documented compatibility requirement.
+-If a future breaking change requires versioning, document the chosen strategy before implementing it.
 
 ## 12. Idempotency and safe operations
 
@@ -144,12 +137,8 @@
 
 ## 15. Date, time, number, enum, and identifier representations
 
-- Use consistent, explicit representations for date, time, number, enum, and identifier values.
-- Prefer standard ISO-8601 representations for date/time values when applicable.
-- Represent enums consistently and document their allowed values.
-- Use stable identifier types and avoid exposing internal implementation-specific formats unless required.
-- Keep numeric values predictable, including precision and formatting expectations.
-- Document any constraints or business rules associated with these representations.
+- Use UTC-based timestamps for persisted audit timestamps such as createdAt and updatedAt.
+-Expose timestamps using ISO-8601/JSON date-time representations.
 
 ## 16. Nullability and optional fields
 
@@ -186,12 +175,13 @@
 
 ## 20. Security considerations for APIs
 
-- Secure API endpoints according to authentication and authorization requirements.
-- Do not expose sensitive data through the public API unless it is required and authorized.
-- Keep authorization checks enforced server-side and do not rely on client-side hiding.
-- Validate permissions, not just user identity.
-- Avoid leaking internal implementation details or system metadata in responses.
-- Treat API security as a product requirement, not a secondary concern.
+- Do not introduce authentication or authorization features unless they are included in the approved requirements/specification.
+-Regardless of authentication requirements:
+  - Never commit secrets.
+  - Never expose sensitive configuration.
+  - Validate all client input server-side.
+  - Do not expose internal errors or stack traces.
+  - Do not trust client-side enforcement of business rules.
 
 ## 21. Logging and observability without exposing sensitive data
 
