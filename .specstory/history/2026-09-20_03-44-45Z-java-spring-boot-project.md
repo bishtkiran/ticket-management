@@ -4443,383 +4443,10 @@ Do not implement any code.
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="write" data-tool-name="create_file"><details>
-<summary>Tool use: **create_file**</summary>
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
 
 Created `ui-flow.md`
-
-**Input:**
-
-- content:
-
-```
-# UI Flow Specification
-
-## 1. Overview
-
-This document defines the user interface flow for the Support Ticket Management System. The interface is designed for a simple, clear support workflow with ticket creation, listing, viewing, updating, status changes, comments, search, and status-based filtering.
-
-The UI should remain straightforward and user-friendly, with clear feedback for loading, empty states, validation, and API failure scenarios.
-
-## 2. Screen: Ticket List
-
-### 2.1 Purpose
-
-The Ticket List screen is the primary landing view for users. It shows all tickets and enables users to search, filter, create a new ticket, and open a ticket for more detail.
-
-### 2.2 Layout
-
-- Header or page title: "Tickets"
-- Search input for keyword search
-- Status filter dropdown or segmented control
-- Create Ticket button
-- Ticket table or list view with summary rows
-
-### 2.3 Ticket list item content
-
-Each ticket row should display:
-
-- ticket identifier
-- title
-- current status
-- priority
-- assignee, if available
-- last updated time or creation time
-
-### 2.4 User actions
-
-- Search by keyword
-- Filter by status
-- Open a ticket to view details
-- Create a new ticket
-
-### 2.5 Loading state
-
-- Show a spinner, skeleton rows, or loading text while tickets are being fetched.
-- Disable related controls while the list is loading if needed.
-
-### 2.6 Empty state
-
-- If no tickets exist, show a friendly empty state such as:
-  - "No tickets found"
-  - "Create a new ticket to get started"
-- If a search or filter returns no results, show a related empty state such as:
-  - "No tickets match your search"
-  - "No tickets found for the selected status"
-
-### 2.7 Validation and API errors
-
-- If the search request fails, show a non-blocking error message.
-- If the ticket list request fails, show a clear error banner or inline message.
-- Do not display technical backend details to the end user.
-
-## 3. Flow: Create Ticket
-
-### 3.1 Trigger
-
-Triggered from the Ticket List screen via the "Create Ticket" button.
-
-### 3.2 Form fields
-
-- Title
-- Description
-- Priority
-- Assignee (optional depending on workflow design)
-
-### 3.3 Validation
-
-- Title is required.
-- Description is required.
-- Priority must be a valid supported value.
-- Assignee, if included, must be valid when provided.
-
-### 3.4 Error handling
-
-- Display inline validation errors next to invalid fields.
-- Show a top-level form error if the backend rejects the create request.
-- Do not leave the user guessing; show a clear message such as "Unable to create ticket. Please check the details and try again."
-
-### 3.5 Success behaviour
-
-- On successful creation, the user is returned to the Ticket List screen.
-- The new ticket should be visible in the list immediately if the list is refreshed or reloaded.
-
-### 3.6 Loading state
-
-- Disable the submit button while creation is in progress.
-- Show a loading state such as "Creating ticket...".
-
-## 4. Screen: Ticket Details
-
-### 4.1 Purpose
-
-The Ticket Details screen shows the complete information for a selected ticket and provides actions to update the ticket, change status, and add comments.
-
-### 4.2 Content
-
-- Ticket title
-- Ticket description
-- Current status
-- Priority
-- Assignee
-- Creation timestamp
-- Updated timestamp
-- Comments list
-
-### 4.3 User actions
-
-- Edit Ticket
-- Change Status
-- Add Comment
-- Return to the Ticket List
-
-### 4.4 Loading state
-
-- Display a spinner or loading placeholder while the ticket detail is being fetched.
-- If the ticket cannot be loaded, show a clear error state.
-
-### 4.5 Error state
-
-- If the selected ticket is not found, show a not-found state with a message such as "Ticket not found" and a way to return to the list.
-- If the fetch fails, show a meaningful error message and a retry option when appropriate.
-
-## 5. Flow: Edit Ticket
-
-### 5.1 Trigger
-
-Triggered from the Ticket Details screen through an "Edit Ticket" action.
-
-### 5.2 Form fields
-
-- Title
-- Description
-- Priority
-- Assignee
-
-### 5.3 Validation
-
-- Title must not be blank.
-- Description must not be blank.
-- Priority must be valid.
-- Assignee must be valid when provided.
-
-### 5.4 Loading state
-
-- Show a loading indicator while the update request is in progress.
-- Disable form submission while saving.
-
-### 5.5 Validation errors
-
-- Show inline errors next to invalid form fields.
-- Show a general form-level error if the backend rejects the update.
-
-### 5.6 API errors
-
-- Show a clear error alert if the update request fails.
-- Preserve the form values if possible so the user can correct them.
-
-### 5.7 Success behaviour
-
-- Save the updated values.
-- Return to the Ticket Details screen with the updated data.
-
-## 6. Flow: Change Status
-
-### 6.1 Trigger
-
-Triggered from the Ticket Details screen through a status action or status selector.
-
-### 6.2 Status model
-
-Valid states:
-
-- OPEN
-- IN_PROGRESS
-- RESOLVED
-- CLOSED
-- CANCELLED
-
-### 6.3 Allowed transitions
-
-- OPEN -> IN_PROGRESS
-- IN_PROGRESS -> RESOLVED
-- RESOLVED -> CLOSED
-- OPEN -> CANCELLED
-- IN_PROGRESS -> CANCELLED
-
-### 6.4 Invalid transitions
-
-The UI should prevent or block invalid transitions based on the current state when possible, but the backend must still reject invalid transitions.
-
-Examples of invalid transitions:
-
-- CLOSED -> OPEN
-- RESOLVED -> OPEN
-- CANCELLED -> OPEN
-- OPEN -> CLOSED
-- IN_PROGRESS -> CLOSED
-
-### 6.5 Status display
-
-- Display the current ticket status clearly and consistently.
-- Use a badge, pill, or label with distinct colors or styling for each status.
-- Show status in a way that helps users quickly understand the ticket lifecycle.
-
-### 6.6 Validation and API errors
-
-- If the user attempts an invalid transition, show a clear message such as:
-  - "This status change is not allowed for the current ticket state."
-- If the backend rejects the status update, surface an API error message without exposing internal details.
-
-### 6.7 Loading state
-
-- Show a loading indicator or disabled state during status submission.
-
-### 6.8 Success behaviour
-
-- Refresh the ticket details view to reflect the new state.
-- Update the ticket list row status as needed.
-
-## 7. Flow: Add Comment
-
-### 7.1 Trigger
-
-Triggered from the Ticket Details screen through an "Add Comment" action or comment form.
-
-### 7.2 Form fields
-
-- Comment text
-
-### 7.3 Validation
-
-- Comment content is required.
-- Comment content must not be empty or whitespace-only.
-
-### 7.4 Loading state
-
-- Disable the submit action while the comment is being posted.
-- Show a loading indicator such as "Adding comment..."
-
-### 7.5 Validation errors
-
-- Show inline validation for an empty or invalid comment.
-
-### 7.6 API errors
-
-- Show a generic error such as "Unable to add comment. Please try again."
-- Keep the form present so the user can correct the input.
-
-### 7.7 Success behaviour
-
-- Append the new comment to the comments list.
-- Preserve ticket detail view context after success.
-
-## 8. Search
-
-### 8.1 Purpose
-
-Search allows users to find tickets by keyword.
-
-### 8.2 Controls
-
-- Search input in the Ticket List header
-- Search trigger by button or on input depending on UX design
-
-### 8.3 Behaviour
-
-- Search should match ticket title and description content according to the backend contract.
-- If the search term is blank, the list should revert to the default listing behavior.
-- If the backend returns no matches, show an empty state.
-
-### 8.4 Validation and errors
-
-- Empty search values should be treated as a normal list request or ignored gracefully.
-- Display a clear error message if the search request fails.
-
-## 9. Status filtering
-
-### 9.1 Purpose
-
-Users can filter tickets by current status.
-
-### 9.2 Controls
-
-- Status dropdown or filter buttons for each valid status.
-
-### 9.3 Supported values
-
-- OPEN
-- IN_PROGRESS
-- RESOLVED
-- CLOSED
-- CANCELLED
-- All statuses (default)
-
-### 9.4 Behaviour
-
-- Filtering should display only tickets matching the selected status.
-- If no tickets match, show a filtered empty state.
-
-### 9.5 Validation and errors
-
-- If the filter value is invalid, show a clear error and reset to the default state if appropriate.
-- If the backend returns an error, show a non-blocking message.
-
-## 10. Status display conventions
-
-The UI should present statuses in a consistent and clear manner.
-
-- OPEN: neutral or open state styling
-- IN_PROGRESS: active/in-progress styling
-- RESOLVED: successful or complete styling
-- CLOSED: final or closed styling
-- CANCELLED: cancelled/secondary styling
-
-Use a consistent badge, label, or color scheme throughout the app.
-
-## 11. Validation error patterns
-
-Validation errors should be shown in a consistent way across screens:
-
-- Inline text under the relevant field
-- Form-level summary for multiple errors
-- Clear and actionable wording
-
-Examples:
-
-- "Title is required."
-- "Description cannot be blank."
-- "Please select a valid status."
-- "This status change is not allowed for the current ticket state."
-
-## 12. API error patterns
-
-API failures should be presented in a user-friendly way:
-
-- For network or server errors: show a generic alert such as "Unable to load tickets. Please try again."
-- For not-found errors: show a not-found state for the ticket or redirect to the list if appropriate.
-- For invalid state transitions: show a business-rule message that explains the user cannot make that status change.
-
-## 13. Accessibility and clarity
-
-- Ensure all actions and error messages are readable and accessible.
-- Use labels, visible focus states, and clear call-to-action wording.
-- Keep the UI simple and consistent across screens.
-
-## 14. Scope note
-
-This document defines the user flows and interface behavior for the Support Ticket Management System. It specifies the primary screens, states, validation expectations, feedback patterns, and status-management behavior, without prescribing implementation code.
-
-```
-
-- filePath: `/home/kiran/Documents/ticket-management/spec/ui-flow.md`
-
-**Result:**
-
-```
-The following files were successfully edited:
-/home/kiran/Documents/ticket-management/spec/ui-flow.md
-```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -5212,3 +4839,659 @@ It includes:
 - status filtering
 
 No implementation code was added.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `test-strategy.md`
+
+**Input:**
+
+- content:
+
+```
+# Test Strategy
+
+## 1. Objective
+
+The testing strategy for the Support Ticket Management System is designed to verify the correctness, reliability, and maintainability of the application while keeping the test suite practical and aligned with the project size.
+
+The most critical tests are those that guard business rules, backend validation, and ticket lifecycle enforcement. Special emphasis must be placed on proving that the backend rejects invalid ticket state transitions and that the initial ticket state is OPEN.
+
+## 2. Testing principles
+
+- Test real behavior, not implementation details.
+- Prefer small, focused tests over large, brittle test suites.
+- Validate behavior at the correct layer: UI, API, service, persistence, or business rule.
+- Keep tests readable and maintainable.
+- Use the backend as the source of truth for validation and state-machine enforcement.
+- Avoid tests that only assert framework behavior or mock behavior rather than observable application outcomes.
+
+## 3. Test scope by layer
+
+### 3.1 Unit tests
+
+Unit tests should validate isolated business logic and domain behavior.
+
+Focus areas:
+
+- Ticket validation rules
+- Ticket state transition validation logic
+- Business-rule checks for required fields and invalid transitions
+- Validation of priority and other constrained fields
+- Small helper logic, if any
+
+Examples:
+
+- Ticket title is required
+- Ticket description is required
+- Priority value is recognized and accepted
+- Invalid status transition is rejected
+
+### 3.2 Repository tests
+
+Repository tests verify persistence behavior and database interaction contracts.
+
+Focus areas:
+
+- Persisting a new ticket
+- Retrieving tickets by ID and by list query
+- Filtering by status
+- Saving comments for a given ticket
+- Query behavior for search and list operations
+- Default initial state is OPEN when a ticket is created
+
+Examples:
+
+- A created ticket is stored with status OPEN
+- A ticket can be retrieved by ID
+- Filtering by status returns only matching tickets
+- A comment is linked to the correct ticket
+
+### 3.3 Controller/API tests
+
+Controller tests validate the public API contract and the behavior of HTTP endpoints.
+
+Focus areas:
+
+- Create ticket endpoint
+- List tickets endpoint
+- Get ticket detail endpoint
+- Update ticket fields
+- Change status endpoint
+- Add comment endpoint
+- Search endpoint
+- Filter-by-status endpoint
+
+Examples:
+
+- Create ticket returns 201 and the created ticket payload
+- List tickets returns 200 and the correct collection
+- Ticket detail returns 404 for a missing ticket
+- Invalid status transition returns 409 Conflict
+- Empty or invalid request payload returns a validation error response
+
+### 3.4 Integration tests
+
+Integration tests validate that the application works correctly when multiple components interact together.
+
+Focus areas:
+
+- Full ticket creation workflow
+- Full ticket update workflow
+- End-to-end status transitions through allowed lifecycle steps
+- Comment creation and retrieval
+- Search and filter behavior across the application stack
+
+Examples:
+
+- Create a ticket, then fetch it by ID, then update it, then filter by its current status
+- Create a ticket with status OPEN, transition to IN_PROGRESS, then RESOLVED, then CLOSED
+- Create a ticket from OPEN and cancel it successfully
+
+## 4. State-machine test strategy
+
+State-machine validation is a critical requirement and must be tested thoroughly.
+
+### 4.1 Core rule
+
+The backend must reject every invalid transition, and the initial state must be OPEN.
+
+### 4.2 Required state-machine tests
+
+- A newly created ticket has status OPEN.
+- OPEN -> IN_PROGRESS is allowed.
+- IN_PROGRESS -> RESOLVED is allowed.
+- RESOLVED -> CLOSED is allowed.
+- OPEN -> CANCELLED is allowed.
+- IN_PROGRESS -> CANCELLED is allowed.
+
+### 4.3 Invalid transition tests
+
+The test suite must explicitly prove that the backend rejects the following invalid transitions:
+
+- CLOSED -> OPEN
+- RESOLVED -> OPEN
+- CANCELLED -> OPEN
+- OPEN -> RESOLVED
+- OPEN -> CLOSED
+- IN_PROGRESS -> OPEN
+- IN_PROGRESS -> CLOSED
+- RESOLVED -> IN_PROGRESS
+- RESOLVED -> CANCELLED
+- CLOSED -> IN_PROGRESS
+- CLOSED -> RESOLVED
+- CLOSED -> CANCELLED
+- CANCELLED -> IN_PROGRESS
+- CANCELLED -> RESOLVED
+- CANCELLED -> CLOSED
+
+### 4.4 Backend enforcement requirement
+
+The test strategy must ensure that invalid transitions are rejected by the backend before persistence occurs.
+
+This should be proven with tests that:
+
+- attempt an invalid transition through the API
+- verify the HTTP status is 409 Conflict
+- verify the ticket state remains unchanged after the failed request
+- verify the database still contains the original status
+
+This requirement is essential and must not be treated as optional.
+
+## 5. Backend validation tests
+
+Validation tests should cover all critical input and rule checks.
+
+Focus areas:
+
+- Missing required title
+- Missing required description
+- Blank title or description values
+- Invalid priority values
+- Invalid ticket status in update requests
+- Invalid comment content
+- Invalid query parameters for filtering and sorting
+- Invalid ID or malformed path parameters
+
+Examples:
+
+- A create ticket request without title is rejected
+- A create ticket request without description is rejected
+- A ticket update with an unsupported status is rejected
+- An invalid filter value for status is rejected
+- An empty comment body is rejected
+
+## 6. Frontend tests
+
+Frontend tests should validate presentation and user interaction without duplicating full backend validation logic.
+
+Focus areas:
+
+- Rendering the ticket list
+- Displaying empty states
+- Showing loading states
+- Showing validation errors on forms
+- Showing API error messages
+- Displaying ticket status badges and lifecycle states
+- Search input behavior
+- Status filter behavior
+- Ticket detail screen rendering
+- Successful create/update/comment/status-change workflows
+
+Examples:
+
+- Ticket list shows loading state before data arrives
+- Empty state appears when there are no tickets
+- Invalid create form fields show validation messages
+- API error for ticket creation is displayed to the user
+- Selected status filter matches the visible list results
+
+## 7. Important negative tests
+
+Negative tests are essential for confidence in this project.
+
+The following should be explicitly covered:
+
+- Invalid ticket transition is rejected
+- Non-existent ticket returns 404
+- Update request for missing ticket fails
+- Comment against non-existent ticket fails
+- Invalid search query is rejected or handled predictably
+- Invalid status filter value is rejected
+- Blank required fields are rejected
+- Duplicate or conflicting business operations are rejected if applicable
+- Terminal state cannot transition back to earlier state
+
+## 8. Database persistence tests
+
+Persistence tests ensure persisted data matches real application behavior.
+
+Focus areas:
+
+- A new ticket is stored with status OPEN
+- A ticket update persists the changed field values
+- A status update persists the new state
+- A comment is stored against the correct ticket
+- Search and filter queries return persisted records correctly
+- Data integrity is maintained when invalid operations are rejected
+
+Examples:
+
+- Creating a ticket persists the correct title, description, priority, and initial status
+- Updating the assignee persists the new assignee
+- Changing status persists the new state after validation
+- Invalid state update does not change the stored status
+
+## 9. Edge cases
+
+The test suite should include edge cases that frequently cause defects.
+
+Important edge cases:
+
+- Ticket created with empty or whitespace-only title
+- Ticket created with empty or whitespace-only description
+- Search with blank or whitespace-only keyword
+- Filter with an unsupported status value
+- Update request with no fields to change
+- Ticket detail request for a missing or deleted record
+- Transition from terminal state back to any earlier state
+- Attempts to create or update a ticket with invalid priority values
+- Attempt to add a comment with empty content
+- Attempt to update a ticket in a terminal state when the state machine does not allow it
+
+## 10. Recommended test matrix
+
+| Area | Priority | Goal |
+| --- | --- | --- |
+| State-machine validation | High | Prove invalid transitions are rejected by the backend |
+| Ticket creation validation | High | Verify required fields and initial status |
+| Status update API | High | Validate allowed and forbidden transitions |
+| Repository persistence | High | Ensure correct data writes and reads |
+| API error mapping | High | Verify consistent failure handling |
+| Search and filter behavior | Medium | Ensure list queries work correctly |
+| Frontend user flows | Medium | Ensure correct screens and feedback |
+| Edge-case validation | Medium | Prevent regressions in invalid input handling |
+
+## 11. Test execution expectations
+
+- Fast feedback is important; unit and validation tests should run quickly.
+- Repository and integration tests should be targeted and focused.
+- API tests should verify contract and error semantics, not just success flows.
+- State-machine tests should be treated as critical regression tests.
+- The initial state OPEN should be explicitly asserted in create and persistence tests.
+
+## 12. Success criteria
+
+The testing strategy is successful when:
+
+- all required ticket operations work as expected
+- all allowed transitions pass validation
+- all disallowed transitions are rejected by the backend
+- initial status is OPEN for every newly created ticket
+- validation errors are consistent and meaningful
+- persistence behavior is reliable and database-backed
+- the UI reflects the real API behavior consistently
+
+## 13. Scope note
+
+This test strategy is intentionally practical and project-appropriate for a small Support Ticket Management System. It emphasizes the most important business risks: validation, lifecycle enforcement, and persistence correctness, while keeping the suite lean and maintainable.
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/spec/test-strategy.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/spec/test-strategy.md
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **test-strategy.md**</summary>
+
+@@ lines 1-1 @@
+
+```
+# Test Strategy
+
+## 1. Objective
+
+The testing strategy for the Support Ticket Management System is designed to verify the correctness, reliability, and maintainability of the application while keeping the test suite practical and aligned with the project size.
+
+The most critical tests are those that guard business rules, backend validation, and ticket lifecycle enforcement. Special emphasis must be placed on proving that the backend rejects invalid ticket state transitions and that the initial ticket state is OPEN.
+
+## 2. Testing principles
+
+- Test real behavior, not implementation details.
+- Prefer small, focused tests over large, brittle test suites.
+- Validate behavior at the correct layer: UI, API, service, persistence, or business rule.
+- Keep tests readable and maintainable.
+- Use the backend as the source of truth for validation and state-machine enforcement.
+- Avoid tests that only assert framework behavior or mock behavior rather than observable application outcomes.
+
+## 3. Test scope by layer
+
+### 3.1 Unit tests
+
+Unit tests should validate isolated business logic and domain behavior.
+
+Focus areas:
+
+- Ticket validation rules
+- Ticket state transition validation logic
+- Business-rule checks for required fields and invalid transitions
+- Validation of priority and other constrained fields
+- Small helper logic, if any
+
+Examples:
+
+- Ticket title is required
+- Ticket description is required
+- Priority value is recognized and accepted
+- Invalid status transition is rejected
+
+### 3.2 Repository tests
+
+Repository tests verify persistence behavior and database interaction contracts.
+
+Focus areas:
+
+- Persisting a new ticket
+- Retrieving tickets by ID and by list query
+- Filtering by status
+- Saving comments for a given ticket
+- Query behavior for search and list operations
+- Default initial state is OPEN when a ticket is created
+
+Examples:
+
+- A created ticket is stored with status OPEN
+- A ticket can be retrieved by ID
+- Filtering by status returns only matching tickets
+- A comment is linked to the correct ticket
+
+### 3.3 Controller/API tests
+
+Controller tests validate the public API contract and the behavior of HTTP endpoints.
+
+Focus areas:
+
+- Create ticket endpoint
+- List tickets endpoint
+- Get ticket detail endpoint
+- Update ticket fields
+- Change status endpoint
+- Add comment endpoint
+- Search endpoint
+- Filter-by-status endpoint
+
+Examples:
+
+- Create ticket returns 201 and the created ticket payload
+- List tickets returns 200 and the correct collection
+- Ticket detail returns 404 for a missing ticket
+- Invalid status transition returns 409 Conflict
+- Empty or invalid request payload returns a validation error response
+
+### 3.4 Integration tests
+
+Integration tests validate that the application works correctly when multiple components interact together.
+
+Focus areas:
+
+- Full ticket creation workflow
+- Full ticket update workflow
+- End-to-end status transitions through allowed lifecycle steps
+- Comment creation and retrieval
+- Search and filter behavior across the application stack
+
+Examples:
+
+- Create a ticket, then fetch it by ID, then update it, then filter by its current status
+- Create a ticket with status OPEN, transition to IN_PROGRESS, then RESOLVED, then CLOSED
+- Create a ticket from OPEN and cancel it successfully
+
+## 4. State-machine test strategy
+
+State-machine validation is a critical requirement and must be tested thoroughly.
+
+### 4.1 Core rule
+
+The backend must reject every invalid transition, and the initial state must be OPEN.
+
+### 4.2 Required state-machine tests
+
+- A newly created ticket has status OPEN.
+- OPEN -> IN_PROGRESS is allowed.
+- IN_PROGRESS -> RESOLVED is allowed.
+- RESOLVED -> CLOSED is allowed.
+- OPEN -> CANCELLED is allowed.
+- IN_PROGRESS -> CANCELLED is allowed.
+
+### 4.3 Invalid transition tests
+
+The test suite must explicitly prove that the backend rejects the following invalid transitions:
+
+- CLOSED -> OPEN
+- RESOLVED -> OPEN
+- CANCELLED -> OPEN
+- OPEN -> RESOLVED
+- OPEN -> CLOSED
+- IN_PROGRESS -> OPEN
+- IN_PROGRESS -> CLOSED
+- RESOLVED -> IN_PROGRESS
+- RESOLVED -> CANCELLED
+- CLOSED -> IN_PROGRESS
+- CLOSED -> RESOLVED
+- CLOSED -> CANCELLED
+- CANCELLED -> IN_PROGRESS
+- CANCELLED -> RESOLVED
+- CANCELLED -> CLOSED
+
+### 4.4 Backend enforcement requirement
+
+The test strategy must ensure that invalid transitions are rejected by the backend before persistence occurs.
+
+This should be proven with tests that:
+
+- attempt an invalid transition through the API
+- verify the HTTP status is 409 Conflict
+- verify the ticket state remains unchanged after the failed request
+- verify the database still contains the original status
+
+This requirement is essential and must not be treated as optional.
+
+## 5. Backend validation tests
+
+Validation tests should cover all critical input and rule checks.
+
+Focus areas:
+
+- Missing required title
+- Missing required description
+- Blank title or description values
+- Invalid priority values
+- Invalid ticket status in update requests
+- Invalid comment content
+- Invalid query parameters for filtering and sorting
+- Invalid ID or malformed path parameters
+
+Examples:
+
+- A create ticket request without title is rejected
+- A create ticket request without description is rejected
+- A ticket update with an unsupported status is rejected
+- An invalid filter value for status is rejected
+- An empty comment body is rejected
+
+## 6. Frontend tests
+
+Frontend tests should validate presentation and user interaction without duplicating full backend validation logic.
+
+Focus areas:
+
+- Rendering the ticket list
+- Displaying empty states
+- Showing loading states
+- Showing validation errors on forms
+- Showing API error messages
+- Displaying ticket status badges and lifecycle states
+- Search input behavior
+- Status filter behavior
+- Ticket detail screen rendering
+- Successful create/update/comment/status-change workflows
+
+Examples:
+
+- Ticket list shows loading state before data arrives
+- Empty state appears when there are no tickets
+- Invalid create form fields show validation messages
+- API error for ticket creation is displayed to the user
+- Selected status filter matches the visible list results
+
+## 7. Important negative tests
+
+Negative tests are essential for confidence in this project.
+
+The following should be explicitly covered:
+
+- Invalid ticket transition is rejected
+- Non-existent ticket returns 404
+- Update request for missing ticket fails
+- Comment against non-existent ticket fails
+- Invalid search query is rejected or handled predictably
+- Invalid status filter value is rejected
+- Blank required fields are rejected
+- Duplicate or conflicting business operations are rejected if applicable
+- Terminal state cannot transition back to earlier state
+
+## 8. Database persistence tests
+
+Persistence tests ensure persisted data matches real application behavior.
+
+Focus areas:
+
+- A new ticket is stored with status OPEN
+- A ticket update persists the changed field values
+- A status update persists the new state
+- A comment is stored against the correct ticket
+- Search and filter queries return persisted records correctly
+- Data integrity is maintained when invalid operations are rejected
+
+Examples:
+
+- Creating a ticket persists the correct title, description, priority, and initial status
+- Updating the assignee persists the new assignee
+- Changing status persists the new state after validation
+- Invalid state update does not change the stored status
+
+## 9. Edge cases
+
+The test suite should include edge cases that frequently cause defects.
+
+Important edge cases:
+
+- Ticket created with empty or whitespace-only title
+- Ticket created with empty or whitespace-only description
+- Search with blank or whitespace-only keyword
+- Filter with an unsupported status value
+- Update request with no fields to change
+- Ticket detail request for a missing or deleted record
+- Transition from terminal state back to any earlier state
+- Attempts to create or update a ticket with invalid priority values
+- Attempt to add a comment with empty content
+- Attempt to update a ticket in a terminal state when the state machine does not allow it
+
+## 10. Recommended test matrix
+
+| Area | Priority | Goal |
+| --- | --- | --- |
+| State-machine validation | High | Prove invalid transitions are rejected by the backend |
+| Ticket creation validation | High | Verify required fields and initial status |
+| Status update API | High | Validate allowed and forbidden transitions |
+| Repository persistence | High | Ensure correct data writes and reads |
+| API error mapping | High | Verify consistent failure handling |
+| Search and filter behavior | Medium | Ensure list queries work correctly |
+| Frontend user flows | Medium | Ensure correct screens and feedback |
+| Edge-case validation | Medium | Prevent regressions in invalid input handling |
+
+## 11. Test execution expectations
+
+- Fast feedback is important; unit and validation tests should run quickly.
+- Repository and integration tests should be targeted and focused.
+- API tests should verify contract and error semantics, not just success flows.
+- State-machine tests should be treated as critical regression tests.
+- The initial state OPEN should be explicitly asserted in create and persistence tests.
+
+## 12. Success criteria
+
+The testing strategy is successful when:
+
+- all required ticket operations work as expected
+- all allowed transitions pass validation
+- all disallowed transitions are rejected by the backend
+- initial status is OPEN for every newly created ticket
+- validation errors are consistent and meaningful
+- persistence behavior is reliable and database-backed
+- the UI reflects the real API behavior consistently
+
+## 13. Scope note
+
+This test strategy is intentionally practical and project-appropriate for a small Support Ticket Management System. It emphasizes the most important business risks: validation, lifecycle enforcement, and persistence correctness, while keeping the suite lean and maintainable.
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+## ✅ Test strategy created
+
+I created the testing strategy at `spec/test-strategy.md`.
+
+It includes:
+- unit tests
+- repository tests
+- controller/API tests
+- integration tests
+- state-machine tests
+- backend validation tests
+- frontend tests
+- negative tests
+- database persistence tests
+- edge cases
+
+It explicitly emphasizes the critical requirement that invalid ticket state transitions are rejected by the backend, and that the initial ticket state is OPEN.
+
+No implementation code was generated.
+
+---
+
+_**User (2026-09-20 07:30:27Z)**_
+
+Now Create spec/test-strategy.md.
+
+Define the testing strategy for this application.
+
+Include:
+- Unit tests
+- Repository tests
+- Controller/API tests
+- Integration tests
+- State-machine tests
+- Backend validation tests
+- Frontend tests
+- Important negative tests
+- Database persistence tests
+-Edge cases
+
+Give special attention to proving that invalid ticket state transitions are rejected by the backend.
+The initail state should be OPEN.
+
+Do not generate any code yet.
