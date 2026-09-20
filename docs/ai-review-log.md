@@ -625,6 +625,23 @@ Reason:
 * Aligns the UI with the API contract and error-handling requirements.
 
 
+## Review 008 — Backend Domain Implementation
+
+**Artifact reviewed:** `backend/java/Ticket.java`
+
+### Finding-001 — Wrong data type
+
+The data type was UUID which was not aligned with the one defined in the data-model.md
+
+Decision:
+
+* Corrected the datatype
+
+Reason:
+
+* The AI should use the data defined in the specfication and should not assume anything.
+
+
 
 
 
