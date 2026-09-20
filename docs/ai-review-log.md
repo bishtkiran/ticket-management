@@ -266,3 +266,58 @@ The requirements now define invalid status transitions as a distinct business-ru
 **Why this matters**
 
 Clear error semantics allow the API specification and integration tests to verify the behavior consistently.
+
+
+## Review 004 — State Machine Specification
+
+**Artifact reviewed:** `spec/state-machine.md`
+
+### Finding 1 — Initial state was not explicitly defined
+
+The state machine defined valid transitions but did not explicitly state
+the initial state of a newly created ticket.
+
+**Correction:** Added `OPEN` as the mandatory initial ticket status.
+
+**Why this matters:** The initial state must be deterministic and should
+not be decided independently by the frontend or implementation AI.
+
+
+### Finding 2 — AI used an ambiguous transition sequence
+
+The specification listed `OPEN -> IN_PROGRESS -> CLOSED` as an invalid
+transition example.
+
+**Issue:** This represents multiple transitions rather than one
+transition and could confuse test generation.
+
+**Correction:** Replaced it with explicit invalid direct transitions,
+including `OPEN -> CLOSED` and `IN_PROGRESS -> CLOSED`.
+
+
+### Finding 3 — AI incorrectly described terminal tickets as immutable
+
+The specification stated that CANCELLED and CLOSED tickets were
+"immutable".
+
+**Issue:** The requirements only state that these states cannot transition
+to another status. They do not prohibit updating other ticket fields
+such as title, description, priority, assignee, or comments.
+
+**Correction:** Changed the rule to prohibit further status transitions
+from terminal states without making the entire ticket immutable.
+
+**Why this matters:** Overly broad AI-generated business rules could
+prevent functionality that is actually required by the application.
+
+
+### Finding 4 — State-machine and API concerns were mixed
+
+The specification included detailed HTTP status-code guidance even
+though `api-contract.md` is responsible for defining the API contract.
+
+**Correction:** `state-machine.md` defines the business rule and
+invalid-transition behavior, while `api-contract.md` defines the HTTP
+status code and error response representation.
+
+
