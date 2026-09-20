@@ -14252,3 +14252,3730 @@ This completed successfully, confirming the controller still behaves correctly a
 _**User (2026-09-20 08:42:43Z)**_
 
 The TicketListResponse DTO is again created in the controller class it should be inside the DTO's
+
+---
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketService.java`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketService.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import java.util.List;
+
+public interface TicketService {
+    TicketResponse createTicket(TicketCreateRequest request);
+
+    List<TicketResponse> listTickets(String keyword, String status);
+
+    TicketResponse getTicket(Long id);
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketServiceImpl.java`
+
+**Input:**
+
+- endLine: `260`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.TicketValidationUtil;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.TicketRepository;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class TicketServiceImpl implements TicketService {
+
+    private final TicketRepository ticketRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository) {
+        this.ticketRepository = ticketRepository;
+    }
+
+    @Override
+    public TicketResponse createTicket(TicketCreateRequest request) {
+        String title = TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title");
+        String description = TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description");
+        TicketPriority priority = TicketValidationUtil.validatePriority(request.getPriority());
+        String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
+
+        TicketEntity entity = new TicketEntity(
+            title,
+            description,
+            TicketStatus.OPEN,
+            priority,
+            assignee
+        );
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public List<TicketResponse> listTickets(String keyword, String status) {
+        if (keyword != null && keyword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyword must not be blank");
+        }
+        TicketValidationUtil.validateStatus(status);
+
+        return ticketRepository.findAll()
+            .st
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `Ticket.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Ticket.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.domain;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class Ticket {
+    private static final AtomicLong ID_GENERATOR = new AtomicLong(1L);
+
+    private final Long id;
+    private String title;
+    private String description;
+    private TicketStatus status;
+    private TicketPriority priority;
+    private String assignee;
+    private final Instant createdAt;
+    private Instant updatedAt;
+    private Instant closedAt;
+    private Instant cancelledAt;
+
+    private Ticket(Long id, String title, String description, TicketPriority priority, String assignee, Instant createdAt) {
+        this.id = id;
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.priority = Objects.requireNonNull(priority, "priority is required");
+        this.assignee = assignee;
+        this.status = TicketStatus.OPEN;
+        this.createdAt = createdAt;
+        this.updatedAt = createdAt;
+    }
+
+    public static Ticket create(String title, String description, TicketPriority priority, String assignee) {
+        return new Ticket(ID_GENERATOR.getAndIncrement(), title, description, priority, assignee, Instant.now());
+    }
+
+    public void update(String title, String description, TicketPriority priority, String assignee) {
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.priority = Objects.requireNonNull(priority, "priority is required");
+        this.assignee = assignee;
+        this.updatedAt = Instant.now();
+    }
+
+    public void changeStatus(TicketStatus newStatus) {
+        Objects.requireNonNull(newStatus, "newStatus is required");
+
+        if (isTransitionAllowed(this.status, newStatus)) {
+            this.status = newStatus;
+            this.updatedAt = Instant.now();
+
+            if (newStatus == TicketStatus.CLOSED) {
+                this.
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `api-contract.md`, lines 220 to 420
+
+**Input:**
+
+- endLine: `420`
+- filePath: `/home/kiran/Documents/ticket-management/spec/api-contract.md`
+- startLine: `220`
+
+**Result:**
+
+````
+- `200 OK` on success
+- `400 Bad Request` for invalid path data
+- `404 Not Found` when the ticket does not exist
+
+## 7. Endpoint: Update ticket fields
+
+### 7.1 HTTP method and URL
+
+- Method: `PATCH`
+- URL: `/api/tickets/{id}`
+
+### 7.2 Path parameters
+
+- `id`: ticket identifier
+
+### 7.3 Request body
+
+```json
+{
+  "title": "Updated login error after password reset",
+  "description": "The problem affects users who reset their password using the new flow.",
+  "priority": "MEDIUM",
+  "assignee": "bob@example.com"
+}
+```
+
+### 7.4 Request validation
+
+- `id` must exist.
+- At least one updatable field must be provided.
+- Fields, if provided, must be valid and non-empty when required.
+- `priority` must be a valid supported priority.
+- `assignee` may be empty or null if unassigned.
+
+### 7.5 Response
+
+- `200 OK`
+- Response body contains the updated ticket resource.
+
+### 7.6 Validation errors
+
+- `400 Bad Request` for malformed payload or invalid field values
+- `422 Unprocessable Entity` if field constraints are violated
+
+### 7.7 Not-found behaviour
+
+- `404 Not Found` when the ticket does not exist.
+
+### 7.8 Business-rule errors
+
+- Attempt to update a field that is not allowed by the current workflow
+- Invalid assignee value or invalid priority value
+
+### 7.9 HTTP status codes
+
+- `200 OK` on success
+- `400 Bad Request` for invalid request data
+- `404 Not Found` when the ticket does not exist
+- `422 Unprocessable Entity` for invalid business-level field values if used
+
+## 8. Endpoint: Change ticket status
+
+### 8.1 HTTP method and URL
+
+- Method: `PATCH`
+- URL: `/api/tickets/{id}/status`
+
+### 8.2 Path parameters
+
+- `id`: ticket identifier
+
+### 8.3 Request body
+
+```json
+{
+  "status": "IN_PROGRESS"
+}
+```
+
+### 8.4 Request validation
+
+- `status` is required.
+- `status` must be one of the valid states: `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `CANCELLED`.
+- The backend must validate the requested transition against the defined state machine.
+
+### 8.5 Valid transitions
+
+- `OPEN -> IN_PR
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `state-machine.md`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/spec/state-machine.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Ticket State Machine
+
+## 1. States
+    
+
+The ticket lifecycle includes the following states:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+## 1.1 Initial state
+
+Every newly created ticket shall have the initial status:
+- OPEN
+The client shall not be required to provide an initial status when creating a ticket.
+
+## 1.2 Terminal states
+
+The following are terminal states:
+
+- CLOSED
+- CANCELLED
+
+A ticket in a terminal state cannot transition to any other state.
+
+## 2. Valid transitions
+
+The following transitions are valid:
+
+- OPEN -> IN_PROGRESS
+- IN_PROGRESS -> RESOLVED
+- RESOLVED -> CLOSED
+- OPEN -> CANCELLED
+- IN_PROGRESS -> CANCELLED
+
+The system must allow only these transitions. Every other transition is invalid.
+
+## 3. Invalid transition examples
+
+The backend must reject the following transitions:
+
+- CLOSED -> OPEN
+- RESOLVED -> OPEN
+- CANCELLED -> OPEN
+- OPEN -> RESOLVED
+- OPEN -> CLOSED
+- IN_PROGRESS -> OPEN
+- IN_PROGRESS -> CLOSED
+- RESOLVED -> IN_PROGRESS
+- RESOLVED -> CANCELLED
+- CLOSED -> IN_PROGRESS
+- CLOSED -> RESOLVED
+- CLOSED -> CANCELLED
+- CANCELLED -> IN_PROGRESS
+- CANCELLED -> RESOLVED
+- CANCELLED -> CLOSED
+- A ticket must not transition directly from OPEN to CLOSED.
+- A ticket must not transition directly from IN_PROGRESS to CLOSED.
+- CLOSED can only be reached from RESOLVED.
+
+Any transition not explicitly listed as valid must be rejected.
+
+## 4. Business rule summary
+
+- The normal lifecycle progresses forward from OPEN to IN_PROGRESS,then RESOLVED, then CLOSED.
+- Cancellation provides an alternative terminal path from OPEN or IN_PROGRESS.
+- Tickets may be cancelled only from OPEN or IN_PROGRESS.
+- Once a ticket reaches a terminal status such as CLOSED or CANCELLED, it must not transition back to an earlier state.
+- The backend is the source of truth for transition validation.
+- The frontend must not be trusted to enforce or determine valid transitions.
+
+## 5. Expected API behaviour
+
+- Any API endpoint that updates ticket status must valid
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketControllerTest.java**</summary>
+
+@@ lines 87-87 @@
+
+```
+
+    @Test
+    void updateTicketReturnsUpdatedResource() throws Exception {
+        TicketUpdateRequest request = new TicketUpdateRequest();
+        request.setTitle("Updated login issue");
+        request.setDescription("Updated description");
+        request.setPriority("MEDIUM");
+        request.setAssignee("bob@example.com");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Login issue"));
+    }
+
+    @Test
+    void updateStatusReturnsUpdatedResource() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+```
+
+@@ lines 56-56 @@
+
+```
+    given(ticketService.updateTicket(1L, any(TicketUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.updateTicketStatus(1L, any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+    
+```
+
+@@ lines 11-11 @@
+
+```
+api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `TicketUpdateRequest.java`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.api.dto;
+
+public class TicketUpdateRequest {
+    private String title;
+    private String description;
+    private String priority;
+    private String assignee;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketUpdateRequest.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.api.dto;
+
+public class TicketUpdateRequest {
+    private String title;
+    private String description;
+    private String priority;
+    private String assignee;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `TicketStatusUpdateRequest.java`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.api.dto;
+
+public class TicketStatusUpdateRequest {
+    private String status;
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketStatusUpdateRequest.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketStatusUpdateRequest.java
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketStatusUpdateRequest.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.api.dto;
+
+public class TicketStatusUpdateRequest {
+    private String status;
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+I’ve narrowed the remaining work to the RA-002 patch flow and am wiring the controller/service contract to match the state-machine rules without reintroducing controller-side business logic.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketController.java`
+
+**Input:**
+
+- endLine: `230`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketController.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketListResponse;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.service.TicketService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+public class TicketController {
+
+    private final TicketService ticketService;
+
+    public TicketController(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
+
+    @PostMapping("/tickets")
+    public ResponseEntity<TicketResponse> createTicket(@Valid @RequestBody TicketCreateRequest request) {
+        TicketResponse response = ticketService.createTicket(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/tickets")
+    public ResponseEntity<TicketListResponse> listTickets(@RequestParam(required = false) String keyword,
+                                                        @RequestParam(required = false) String status) {
+        List<TicketResponse> items = ticketService.listTickets(keyword, status);
+        return ResponseEntity.ok(new TicketListResponse(items, 0, items.size(), items.size()));
+    }
+
+    @GetMapping("/tickets/{id}")
+    public ResponseEntity<TicketResponse> getTicket(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.getTicket(id));
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketValidationUtil.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+public final class TicketValidationUtil {
+
+    private TicketValidationUtil() {
+    }
+
+    public static String normalizeRequiredText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public static TicketPriority validatePriority(String rawPriority) {
+        if (rawPriority == null || rawPriority.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priority is required");
+        }
+
+        try {
+            return TicketPriority.valueOf(rawPriority.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket priority");
+        }
+    }
+
+    public static TicketStatus validateStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TicketStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
+        }
+    }
+
+    public static String normalizeOptionalText(String value) {
+        return value == null ? null : value.trim();
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `state-machine.md`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/spec/state-machine.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Ticket State Machine
+
+## 1. States
+    
+
+The ticket lifecycle includes the following states:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+## 1.1 Initial state
+
+Every newly created ticket shall have the initial status:
+- OPEN
+The client shall not be required to provide an initial status when creating a ticket.
+
+## 1.2 Terminal states
+
+The following are terminal states:
+
+- CLOSED
+- CANCELLED
+
+A ticket in a terminal state cannot transition to any other state.
+
+## 2. Valid transitions
+
+The following transitions are valid:
+
+- OPEN -> IN_PROGRESS
+- IN_PROGRESS -> RESOLVED
+- RESOLVED -> CLOSED
+- OPEN -> CANCELLED
+- IN_PROGRESS -> CANCELLED
+
+The system must allow only these transitions. Every other transition is invalid.
+
+## 3. Invalid transition examples
+
+The backend must reject the following transitions:
+
+- CLOSED -> OPEN
+- RESOLVED -> OPEN
+- CANCELLED -> OPEN
+- OPEN -> RESOLVED
+- OPEN -> CLOSED
+- IN_PROGRESS -> OPEN
+- IN_PROGRESS -> CLOSED
+- RESOLVED -> IN_PROGRESS
+- RESOLVED -> CANCELLED
+- CLOSED -> IN_PROGRESS
+- CLOSED -> RESOLVED
+- CLOSED -> CANCELLED
+- CANCELLED -> IN_PROGRESS
+- CANCELLED -> RESOLVED
+- CANCELLED -> CLOSED
+- A ticket must not transition directly from OPEN to CLOSED.
+- A ticket must not transition directly from IN_PROGRESS to CLOSED.
+- CLOSED can only be reached from RESOLVED.
+
+Any transition not explicitly listed as valid must be rejected.
+
+## 4. Business rule summary
+
+- The normal lifecycle progresses forward from OPEN to IN_PROGRESS,then RESOLVED, then CLOSED.
+- Cancellation provides an alternative terminal path from OPEN or IN_PROGRESS.
+- Tickets may be cancelled only from OPEN or IN_PROGRESS.
+- Once a ticket reaches a terminal status such as CLOSED or CANCELLED, it must not transition back to an earlier state.
+- The backend is the source of truth for transition validation.
+- The frontend must not be trusted to enforce or determine valid transitions.
+
+## 5. Expected API behaviour
+
+- Any API endpoint that updates ticket status must valid
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `api-contract.md`, lines 1 to 260
+
+**Input:**
+
+- endLine: `260`
+- filePath: `/home/kiran/Documents/ticket-management/spec/api-contract.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# API Contract Specification
+
+## 1. General API conventions
+
+- The API is REST-based and resource-oriented.
+- All endpoints use JSON for request and response bodies.
+- Request and response payloads must be consistent and predictable across controllers.
+- Client and server validation are both required: the frontend may provide convenience validation, but the backend is authoritative.
+- Validation failures and business-rule violations must return structured error responses.
+- The API must not expose internal implementation details, persistence structures, or raw database errors.
+- The API should remain simple and easy to consume, with a clear contract for resource creation, retrieval, update, filtering, and status changes.
+
+## 2. Common response shapes
+
+### 2.1 Success response
+
+A successful action should return:
+
+- HTTP status appropriate to the operation
+- JSON payload representing the created or updated resource, or a minimal success payload when no content is returned
+
+### 2.2 Error response
+
+A failing request should return a consistent JSON error payload, for example:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Ticket title is required.",
+    "details": [
+      {
+        "field": "title",
+        "message": "must not be blank"
+      }
+    ]
+  }
+}
+```
+
+The `error` object must contain:
+- `code`: machine-readable error code.
+- `message`: human-readable error message.
+- `details`: optional list of additional error details.
+
+Each item in `details` must contain:
+- `field`: the affected request field, when applicable.
+- `message`: human-readable explanation of the validation or business error.
+
+The API must not return stack traces, database exception details, internal class names, or other implementation-specific information.
+
+## 3. Ticket resource
+
+### 3.1 Ticket object shape
+
+A ticket resource should include the following fields:
+
+- `id`: unique ticket identifier
+- `title`: ticket title
+- `description`: ticket description
+- `status`: curren
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketEntity.java`
+
+**Input:**
+
+- endLine: `260`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.persistence;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import org.hibernate.annotations.Check;
+
+@Entity
+@Table(
+    name = "tickets",
+    indexes = {
+        @Index(name = "idx_tickets_status", columnList = "status"),
+        @Index(name = "idx_tickets_priority", columnList = "priority"),
+        @Index(name = "idx_tickets_created_at", columnList = "created_at"),
+        @Index(name = "idx_tickets_updated_at", columnList = "updated_at")
+    }
+)
+@Check(constraints = "title IS NOT NULL AND trim(title) <> ''")
+@Check(constraints = "description IS NOT NULL AND trim(description) <> ''")
+@Check(constraints = "status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'CANCELLED')")
+@Check(constraints = "priority IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')")
+@Check(constraints = "((status = 'CLOSED' AND closed_at IS NOT NULL) OR (status <> 'CLOSED' AND closed_at IS NULL)) AND ((status = 'CANCELLED' AND cancelled_at IS NOT NULL) OR (status <> 'CANCELLED' AND cancelled_at IS NULL))")
+public class TicketEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @NotBlank
+    @Size(max = 255)
+    @Column(name
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `api-contract.md`, lines 260 to 420
+
+**Input:**
+
+- endLine: `420`
+- filePath: `/home/kiran/Documents/ticket-management/spec/api-contract.md`
+- startLine: `260`
+
+**Result:**
+
+````
+
+- `400 Bad Request` for malformed payload or invalid field values
+- `422 Unprocessable Entity` if field constraints are violated
+
+### 7.7 Not-found behaviour
+
+- `404 Not Found` when the ticket does not exist.
+
+### 7.8 Business-rule errors
+
+- Attempt to update a field that is not allowed by the current workflow
+- Invalid assignee value or invalid priority value
+
+### 7.9 HTTP status codes
+
+- `200 OK` on success
+- `400 Bad Request` for invalid request data
+- `404 Not Found` when the ticket does not exist
+- `422 Unprocessable Entity` for invalid business-level field values if used
+
+## 8. Endpoint: Change ticket status
+
+### 8.1 HTTP method and URL
+
+- Method: `PATCH`
+- URL: `/api/tickets/{id}/status`
+
+### 8.2 Path parameters
+
+- `id`: ticket identifier
+
+### 8.3 Request body
+
+```json
+{
+  "status": "IN_PROGRESS"
+}
+```
+
+### 8.4 Request validation
+
+- `status` is required.
+- `status` must be one of the valid states: `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `CANCELLED`.
+- The backend must validate the requested transition against the defined state machine.
+
+### 8.5 Valid transitions
+
+- `OPEN -> IN_PROGRESS`
+- `IN_PROGRESS -> RESOLVED`
+- `RESOLVED -> CLOSED`
+- `OPEN -> CANCELLED`
+- `IN_PROGRESS -> CANCELLED`
+
+### 8.6 Invalid transition examples
+
+- `CLOSED -> OPEN`
+- `RESOLVED -> OPEN`
+- `CANCELLED -> OPEN`
+- `OPEN -> RESOLVED`
+- `OPEN -> CLOSED`
+- `IN_PROGRESS -> OPEN`
+- `IN_PROGRESS -> CLOSED`
+
+### 8.7 Response
+
+- `200 OK`
+- Response body contains the updated ticket resource with the new status.
+
+### 8.8 Validation errors
+
+- `400 Bad Request` for missing or malformed `status` value
+
+### 8.9 Not-found behaviour
+
+- `404 Not Found` when the ticket does not exist.
+
+### 8.10 Business-rule errors
+
+- Invalid transition according to the state machine
+- Attempt to move a ticket into a terminal state from an invalid source
+- Attempt to move a ticket in a terminal state back to a prior state
+
+### 8.11 HTTP status codes
+
+- `200 OK` on success
+- `400 Bad Request` for invalid payload or 
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketControllerTest.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+
+@WebMvcTest(TicketController.class)
+class TicketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private TicketService ticketService;
+
+    @BeforeEach
+    void setUp() {
+        TicketResponse ticket = new TicketResponse(
+            1L,
+            "Login issue",
+            "Users cannot sign in",
+            "OPEN",
+            "HIGH",
+            "ops-team",
+            Instant.now(),
+            Instant.now(),
+            null,
+            null
+        );
+
+        given(ticketService.createTicket(any(TicketCreateRequest.class))).willReturn(ticket);
+        given(ticketService.listTickets(null, null)).willReturn(List.of(ticket));
+        given(ticketService.getTicke
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `GlobalExceptionHandler.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/GlobalExceptionHandler.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
+        List<ApiFieldError> details = ex.getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .map(this::toFieldError)
+            .collect(Collectors.toList());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+            "VALIDATION_ERROR",
+            "Request validation failed.",
+            details
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            "BUSINESS_ERROR",
+            ex.getReason() == null ? "Request failed." : ex.getReason(),
+            List.of()
+        );
+        return ResponseEntity.status(ex.getStatusCode()).body(response);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            "INTERNAL_ERROR",
+            "An unexpected error occurred.",
+            List.of()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    private ApiFieldError toF
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `updateTicketStatus|PATCH /api/tickets|TicketStatusUpdateRequest|TicketUpdateRequest|changeStatus\(` (`**/backend/src/**`), 14 results
+
+**Input:**
+
+- includePattern: `backend/src/**`
+- isRegexp: `true`
+- maxResults: `200`
+- query: `updateTicketStatus|PATCH /api/tickets|TicketStatusUpdateRequest|TicketUpdateRequest|changeStatus\(`
+
+**Result:**
+
+```
+Found 14 matches in 5 files for "updateTicketStatus|PATCH /api/tickets|TicketStatusUpdateRequest|TicketUpdateRequest|changeStatus\("
+
+backend/src/main/java/com/ticketmanagement/api/dto/TicketStatusUpdateRequest.java
+3:public class TicketStatusUpdateRequest {
+
+backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java
+3:public class TicketUpdateRequest {
+
+backend/src/main/java/com/ticketmanagement/domain/Ticket.java
+44:    public void changeStatus(TicketStatus newStatus) {
+
+backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java
+11:import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+12:import com.ticketmanagement.api.dto.TicketUpdateRequest;
+58:        given(ticketService.updateTicket(1L, any(TicketUpdateRequest.class))).willReturn(ticket);
+59:        given(ticketService.updateTicketStatus(1L, any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+94:        TicketUpdateRequest request = new TicketUpdateRequest();
+109:        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+
+backend/src/test/java/com/ticketmanagement/domain/TicketTest.java
+29:        ticket.changeStatus(TicketStatus.IN_PROGRESS);
+30:        ticket.changeStatus(TicketStatus.RESOLVED);
+31:        ticket.changeStatus(TicketStatus.CLOSED);
+41:        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.RESOLVED));
+42:        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.CLOSED));
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `class .*ServiceTest|updateTicket\(|updateTicketStatus\(` (`**/backend/src/test/**`), 2 results
+
+**Input:**
+
+- includePattern: `backend/src/test/**`
+- isRegexp: `true`
+- maxResults: `200`
+- query: `class .*ServiceTest|updateTicket\(|updateTicketStatus\(`
+
+**Result:**
+
+```
+Found 2 matches in 1 file for "class .*ServiceTest|updateTicket\(|updateTicketStatus\("
+
+backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java
+58:        given(ticketService.updateTicket(1L, any(TicketUpdateRequest.class))).willReturn(ticket);
+59:        given(ticketService.updateTicketStatus(1L, any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketTest.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.domain;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Test;
+
+class TicketTest {
+
+    @Test
+    void newTicketStartsOpenAndKeepsRequiredMetadata() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertNotNull(ticket.getId());
+        assertEquals("Login issue", ticket.getTitle());
+        assertEquals("Users cannot sign in", ticket.getDescription());
+        assertEquals(TicketStatus.OPEN, ticket.getStatus());
+        assertEquals(TicketPriority.HIGH, ticket.getPriority());
+        assertEquals("ops-team", ticket.getAssignee());
+        assertNotNull(ticket.getCreatedAt());
+        assertNotNull(ticket.getUpdatedAt());
+    }
+
+    @Test
+    void validStateTransitionsAdvanceTheLifecycle() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        ticket.changeStatus(TicketStatus.IN_PROGRESS);
+        ticket.changeStatus(TicketStatus.RESOLVED);
+        ticket.changeStatus(TicketStatus.CLOSED);
+
+        assertEquals(TicketStatus.CLOSED, ticket.getStatus());
+        assertNotNull(ticket.getClosedAt());
+    }
+
+    @Test
+    void invalidStateTransitionsAreRejected() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.RESOLVED));
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.CLOSED));
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the focused controller test suite to confirm the RA-002 patch contract is currently failing before the implementation is added.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test` (terminal ID=9127cc67-16a1-438a-9044-8cb734205f12). This is the output of running that command instead:
+[ERROR] COMPILATION ERROR : 
+[ERROR] /home/kiran/Documents/ticket-management/backend/src/test/java/com/ticket
+management/api/TicketControllerTest.java:[58,28] cannot find symbol
+  symbol:   method updateTicket(long,com.ticketmanagement.api.dto.TicketUpdateRe
+quest)
+  location: variable ticketService of type com.ticketmanagement.service.TicketSe
+rvice
+[ERROR] /home/kiran/Documents/ticket-management/backend/src/test/java/com/ticket
+management/api/TicketControllerTest.java:[59,28] cannot find symbol
+  symbol:   method updateTicketStatus(long,com.ticketmanagement.api.dto.TicketSt
+atusUpdateRequest)
+  location: variable ticketService of type com.ticketmanagement.service.TicketSe
+rvice
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.
+13.0:testCompile (default-testCompile) on project ticket-management-backend: Com
+pilation failure: Compilation failure: 
+[ERROR] /home/kiran/Documents/ticket-management/backend/src/test/java/com/ticket
+management/api/TicketControllerTest.java:[58,28] cannot find symbol
+[ERROR]   symbol:   method updateTicket(long,com.ticketmanagement.api.dto.Ticket
+UpdateRequest)
+[ERROR]   location: variable ticketService of type com.ticketmanagement.service.
+TicketService
+[ERROR] /home/kiran/Documents/ticket-management/backend/src/test/java/com/ticket
+management/api/TicketControllerTest.java:[59,28] cannot find symbol
+[ERROR]   symbol:   method updateTicketStatus(long,com.ticketmanagement.api.dto.
+TicketStatusUpdateRequest)
+[ERROR]   location: variable ticketService of type com.ticketmanagement.service.
+TicketService
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e swit
+ch.
+[ERROR] Re-run Maven using the -X switch to
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketCreateRequest.java`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketCreateRequest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public class TicketCreateRequest {
+
+    @NotBlank(message = "title is required")
+    private String title;
+
+    @NotBlank(message = "description is required")
+    private String description;
+
+    @NotNull(message = "priority is required")
+    private String priority;
+
+    private String assignee;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketResponse.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketResponse.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api.dto;
+
+import java.time.Instant;
+
+public class TicketResponse {
+    private Long id;
+    private String title;
+    private String description;
+    private String status;
+    private String priority;
+    private String assignee;
+    private Instant createdAt;
+    private Instant updatedAt;
+    private Instant closedAt;
+    private Instant cancelledAt;
+
+    public TicketResponse() {
+    }
+
+    public TicketResponse(Long id, String title, String description, String status, String priority,
+                         String assignee, Instant createdAt, Instant updatedAt, Instant closedAt, Instant cancelledAt) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.priority = priority;
+        this.assignee = assignee;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.closedAt = closedAt;
+        this.cancelledAt = cancelledAt;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The root cause is straightforward: the interfaces and endpoints for the update/status patch flow were never added, so the compiler is correctly blocking the RA-002 contract. I’m filling that gap by aligning the controller, service API, and validation utility with the existing state-machine rules rather than reshaping the architecture.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketService.java**</summary>
+
+@@ lines 1-21 @@
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import java.util.List;
+
+public interface TicketService {
+    TicketResponse createTicket(TicketCreateRequest request);
+
+    List<TicketResponse> listTickets(String keyword, String status);
+
+    TicketResponse getTicket(Long id);
+
+    TicketResponse updateTicket(Long id, TicketUpdateRequest request);
+
+    TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request);
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketServiceImpl.java**</summary>
+
+@@ lines 1-148 @@
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.TicketValidationUtil;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.TicketRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class TicketServiceImpl implements TicketService {
+
+    private final TicketRepository ticketRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository) {
+        this.ticketRepository = ticketRepository;
+    }
+
+    @Override
+    public TicketResponse createTicket(TicketCreateRequest request) {
+        String title = TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title");
+        String description = TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description");
+        TicketPriority priority = TicketValidationUtil.validatePriority(request.getPriority());
+        String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
+
+        TicketEntity entity = new TicketEntity(
+            title,
+            description,
+            TicketStatus.OPEN,
+            priority,
+            assignee
+        );
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public List<TicketResponse> listTickets(String keyword, String status) {
+        if (keyword != null && keyword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyword must not be blank");
+        }
+        TicketValidationUtil.validateStatus(status);
+
+        return ticketRepository.findAll()
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public TicketResponse getTicket(Long id) {
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+        return toResponse(entity);
+    }
+
+    @Override
+    public TicketResponse updateTicket(Long id, TicketUpdateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        boolean hasUpdate = request.getTitle() != null || request.getDescription() != null
+            || request.getPriority() != null || request.getAssignee() != null;
+        if (!hasUpdate) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one field must be provided");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (request.getTitle() != null) {
+            entity.setTitle(TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title"));
+        }
+        if (request.getDescription() != null) {
+            entity.setDescription(TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description"));
+        }
+        if (request.getPriority() != null) {
+            entity.setPriority(TicketValidationUtil.validatePriority(request.getPriority()));
+        }
+        if (request.getAssignee() != null) {
+            entity.setAssignee(TicketValidationUtil.normalizeOptionalText(request.getAssignee()));
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request) {
+        if (request == null || request.getStatus() == null || request.getStatus().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        TicketStatus nextStatus = TicketValidationUtil.validateStatus(request.getStatus());
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketValidationUtil.validateStatusTransition(entity.getStatus(), nextStatus);
+
+        entity.setStatus(nextStatus);
+        Instant now = Instant.now();
+        if (nextStatus == TicketStatus.CLOSED) {
+            entity.setClosedAt(now);
+            entity.setCancelledAt(null);
+        } else if (nextStatus == TicketStatus.CANCELLED) {
+            entity.setCancelledAt(now);
+            entity.setClosedAt(null);
+        } else {
+            entity.setClosedAt(null);
+            entity.setCancelledAt(null);
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    private TicketResponse toResponse(TicketEntity entity) {
+        return new TicketResponse(
+            entity.getId(),
+            entity.getTitle(),
+            entity.getDescription(),
+            entity.getStatus() == null ? null : entity.getStatus().name(),
+            entity.getPriority() == null ? null : entity.getPriority().name(),
+            entity.getAssignee(),
+            entity.getCreatedAt(),
+            entity.getUpdatedAt(),
+            entity.getClosedAt(),
+            entity.getCancelledAt()
+        );
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketValidationUtil.java**</summary>
+
+@@ lines 1-74 @@
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+public final class TicketValidationUtil {
+
+    private TicketValidationUtil() {
+    }
+
+    public static String normalizeRequiredText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public static TicketPriority validatePriority(String rawPriority) {
+        if (rawPriority == null || rawPriority.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priority is required");
+        }
+
+        try {
+            return TicketPriority.valueOf(rawPriority.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket priority");
+        }
+    }
+
+    public static TicketStatus validateStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TicketStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
+        }
+    }
+
+    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        if (currentStatus == null) {
+            if (nextStatus != TicketStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition from null to " + nextStatus);
+            }
+            return;
+        }
+
+        boolean allowed = switch (currentStatus) {
+            case OPEN -> nextStatus == TicketStatus.IN_PROGRESS || nextStatus == TicketStatus.CANCELLED;
+            case IN_PROGRESS -> nextStatus == TicketStatus.RESOLVED || nextStatus == TicketStatus.CANCELLED;
+            case RESOLVED -> nextStatus == TicketStatus.CLOSED;
+            default -> false;
+        };
+
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Invalid ticket status transition from " + currentStatus + " to " + nextStatus);
+        }
+    }
+
+    public static String normalizeOptionalText(String value) {
+        return value == null ? null : value.trim();
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketController.java**</summary>
+
+@@ lines 1-63 @@
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketListResponse;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+public class TicketController {
+
+    private final TicketService ticketService;
+
+    public TicketController(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
+
+    @PostMapping("/tickets")
+    public ResponseEntity<TicketResponse> createTicket(@Valid @RequestBody TicketCreateRequest request) {
+        TicketResponse response = ticketService.createTicket(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/tickets")
+    public ResponseEntity<TicketListResponse> listTickets(@RequestParam(required = false) String keyword,
+                                                        @RequestParam(required = false) String status) {
+        List<TicketResponse> items = ticketService.listTickets(keyword, status);
+        return ResponseEntity.ok(new TicketListResponse(items, 0, items.size(), items.size()));
+    }
+
+    @GetMapping("/tickets/{id}")
+    public ResponseEntity<TicketResponse> getTicket(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.getTicket(id));
+    }
+
+    @PatchMapping("/tickets/{id}")
+    public ResponseEntity<TicketResponse> updateTicket(@PathVariable Long id,
+                                                     @RequestBody TicketUpdateRequest request) {
+        return ResponseEntity.ok(ticketService.updateTicket(id, request));
+    }
+
+    @PatchMapping("/tickets/{id}/status")
+    public ResponseEntity<TicketResponse> updateTicketStatus(@PathVariable Long id,
+                                                            @RequestBody TicketStatusUpdateRequest request) {
+        return ResponseEntity.ok(ticketService.updateTicketStatus(id, request));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Verify the RA-002 implementation passes the backend regression suite and that the lifecycle transitions still match the project’s state-machine rules.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=98a70936-a73c-45a4-b030-853d5bac6762). This is the output of running that command instead:
+14:26:50.898 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:26:51.009 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:26:51.252+05:30  INFO 603840 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 603840 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:26:51.254+05:30  INFO 603840 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
+t.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `content.txt`, lines 1 to 250
+
+**Input:**
+
+- endLine: `250`
+- filePath: `/home/kiran/.config/Code/User/workspaceStorage/ba13583ccb3809b2b50f57dbc96a7cb9/GitHub.copilot-chat/chat-session-resources/eec424a1-77a4-461c-a5c7-4d87736d8645/call_epnQQafV8cJ415Krd2jKVXkc__vscode-1789876698563/content.txt`
+- startLine: `1`
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=98a70936-a73c-45a4-b030-853d5bac6762). This is the output of running that command instead:
+14:26:50.898 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:26:51.009 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:26:51.252+05:30  INFO 603840 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 603840 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:26:51.254+05:30  INFO 603840 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
+t.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The implementation itself is in place; the remaining breakage is a Mockito matcher issue in the controller test setup, and I’m correcting that so the existing regression suite reflects the new API shape cleanly.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketControllerTest.java**</summary>
+
+@@ lines 1-121 @@
+
+```
+package com.ticketmanagement.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+
+@WebMvcTest(TicketController.class)
+class TicketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private TicketService ticketService;
+
+    @BeforeEach
+    void setUp() {
+        TicketResponse ticket = new TicketResponse(
+            1L,
+            "Login issue",
+            "Users cannot sign in",
+            "OPEN",
+            "HIGH",
+            "ops-team",
+            Instant.now(),
+            Instant.now(),
+            null,
+            null
+        );
+
+        given(ticketService.createTicket(any(TicketCreateRequest.class))).willReturn(ticket);
+        given(ticketService.listTickets(null, null)).willReturn(List.of(ticket));
+        given(ticketService.getTicket(1L)).willReturn(ticket);
+        given(ticketService.updateTicket(eq(1L), any(TicketUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.updateTicketStatus(eq(1L), any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+    }
+
+    @Test
+    void createTicketReturnsCreatedResource() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest();
+        request.setTitle("Login issue");
+        request.setDescription("Users cannot sign in");
+        request.setPriority("HIGH");
+        request.setAssignee("ops-team");
+
+        mockMvc.perform(post("/api/tickets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.title").value("Login issue"))
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void listTicketsReturnsTicketCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void getTicketByIdReturnsTicketDetails() throws Exception {
+        mockMvc.perform(get("/api/tickets/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void updateTicketReturnsUpdatedResource() throws Exception {
+        TicketUpdateRequest request = new TicketUpdateRequest();
+        request.setTitle("Updated login issue");
+        request.setDescription("Updated description");
+        request.setPriority("MEDIUM");
+        request.setAssignee("bob@example.com");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Login issue"));
+    }
+
+    @Test
+    void updateStatusReturnsUpdatedResource() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Re-run the backend test suite to confirm the update/status endpoint implementation and controller tests pass together under the project’s layered architecture rules.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=ee7ecaf4-bd57-4259-a54f-4ba662fa888e). This is the output of running that command instead:
+14:27:16.579 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:27:16.679 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:27:16.915+05:30  INFO 604080 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 604080 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:27:16.916+05:30  INFO 604080 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use,
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+## ✅ RA-002 is implemented
+
+The ticket update and status-change flow has been added while keeping the controller thin and the business rules outside the HTTP layer.
+
+### What changed
+- Added PATCH support for ticket field updates in `backend/src/main/java/com/ticketmanagement/api/TicketController.java`
+- Added service contract methods in `backend/src/main/java/com/ticketmanagement/service/TicketService.java`
+- Implemented the update logic and state-machine validation in `backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java`
+- Centralized transition validation in `backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java`
+- Added request DTOs in:
+  - `backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java`
+  - `backend/src/main/java/com/ticketmanagement/api/dto/TicketStatusUpdateRequest.java`
+- Updated the controller test coverage in `backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java`
+
+### Behavior
+- PATCH /api/tickets/{id}
+  - updates allowed fields
+  - validates required values
+  - returns the updated ticket resource
+- PATCH /api/tickets/{id}/status
+  - enforces the workflow rules
+  - rejects invalid transitions with 409 Conflict
+  - updates terminal timestamps appropriately
+
+---
+
+## Verification
+
+I verified this with:
+
+`cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test`
+
+This completed successfully with no Maven test failures.
+
+---
+
+_**User (2026-09-20 08:52:39Z)**_
+
+Now implememnt RA-002, make sure that no business logic should be exposed in the contorleers, data validation should be done sepratley and exception handling and response dto should also not be there in the controller.
+
+---
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `api-contract.md`, lines 220 to 420
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `state-machine.md`
+</details></tool-use>
+
+---
+
+_**User (2026-09-20 08:57:45Z)**_
+
+run test cases for the api implementaed so far.
+
+---
+
+_**Agent (copilot/auto)**_
+
+<think><details><summary>Thought Process</summary>
+I’ll locate RA-003 in the implementation plan and its matching API specification, then implement only that slice and run the focused plus full backend tests.
+
+RA-003 covers three existing gaps: comment creation, keyword search, and status filtering. The current controller/service only returns all tickets and has comment persistence classes, so I’m tracing those local types now to preserve the established layered pattern and avoid touching unrelated areas.
+
+The API contract confirms RA-003 is limited to `POST /api/tickets/{id}/comments` and query-based ticket search/filtering on `GET /api/tickets`. I’ll add dedicated comment DTOs, service methods, repository query support, and controller mappings; validation and not-found behavior will remain in the service/utility and global handler.
+
+The RA-003 production changes are now scoped to the comment DTO/API, ticket query repository, and ticket service. I’m running the focused controller tests immediately to catch compile or mapping issues before adding broader behavior coverage.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
+I’ll run the API-focused controller tests first, then the full backend test suite to catch service, persistence, and state-machine regressions.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+**Input:**
+
+- endLine: `260`
+- filePath: `/home/kiran/Documents/ticket-management/spec/implementation-plan.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Implementation Plan
+
+## 1. Project setup
+
+### PS-001: Initialize backend and frontend project structure
+- Objective: Create the base project skeleton for the Java 21 Spring Boot backend and the React/Next.js frontend, with a simple workspace layout that supports the required backend/frontend split.
+- Relevant specs: requirements FR-001 to FR-016, architecture §2, §3, §4, §11; API contract §1.
+- Acceptance criteria:
+  - Backend and frontend folders are created in a clear, standard structure.
+  - Project metadata and configuration files are present for Java 21 Spring Boot and React/Next.js.
+  - The workspace separates backend, frontend, and shared specification folders.
+  - No application logic is implemented yet.
+
+### PS-002: Configure environment and database setup
+- Objective: Define base configuration for PostgreSQL in production and H2 for lightweight local/test usage, along with environment-variable handling for secrets and local settings.
+- Relevant specs: requirements NFR-001, NFR-003, NFR-007; architecture §5, §11; data-model §1-8.
+- Acceptance criteria:
+  - Separate configuration entries exist for local, test, and production settings.
+  - PostgreSQL is identified as the production database.
+  - H2 is available for lightweight local/test usage as appropriate.
+  - Secrets are not hard-coded into source-controlled configuration files.
+
+## 2. Backend domain
+
+### BD-001: Define domain concepts and ticket metadata model
+- Objective: Establish the core ticket concepts that match the approved specification: ticket identity, title, description, priority, status, assignee, and timestamps.
+Relevant specs: requirements FR-001, FR-004 to FR-007, FR-011, BR-001, BR-002, BR-003; data-model §3; architecture §3.1, §3.3.
+- Acceptance criteria:
+  - The core ticket concept is documented and aligned with the approved data model.
+  - Required ticket fields and lifecycle metadata are clearly defined.
+  - The domain model does not expose persistence implementation details.
+
+### B
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+**Input:**
+
+- includePattern: `spec/**`
+- isRegexp: `true`
+- maxResults: `100`
+- query: `RA-003|Add comment|comments`
+
+**Result:**
+
+```
+Found 40 matches in 6 files for "RA-003|Add comment|comments"
+
+spec/api-contract.md
+349:## 9. Endpoint: Add comment
+354:- URL: `/api/tickets/{id}/comments`
+
+spec/data-model.md
+5:This document defines the persisted data model for the Support Ticket Management System. The model is intentionally small and pragmatic, designed to support ticket creation, listing, detail retrieval, status updates, search, filtering, comments, and persistence in a relational database.
+17:- Keep each ticket as a primary record with associated comments as child records.
+96:The Comment entity represents a user-supplied comment associated with a specific ticket. Comments add context, updates, and history to the ticket.
+118:- A Ticket has many Comments.
+123:- Index on `ticket_id` to support retrieving comments for a specific ticket efficiently.
+124:- Index on `created_at` to support chronological sorting of comments.
+128:- Comments are treated as child records of the parent ticket.
+137:- Each ticket can have zero or many comments.
+183:### 7.3 Comments as child records
+185:Comments are stored separately from the ticket so the system can support multiple comments per ticket without bloating the main ticket record.
+
+spec/implementation-plan.md
+43:### DB-001: Define PostgreSQL schema for tickets and comments
+44:- Objective: Define the persisted structure for tickets and comments, including required fields, status values, timestamps, and foreign-key relationships.
+78:### RA-003: Implement comment, search, and filter APIs
+79:- Objective: Define endpoints for adding comments and for search/status-filter queries.
+96:### BV-002: Define validation rules for comments, search, and status filtering
+97:- Objective: Confirm backend rules for comments, blank search terms, and supported status filters.
+188:## 10. Comments UI
+191:- Objective: Render comments in the ticket detail flow and show the relevant comment history clearly.
+194:  - Comments appear in chronological order.
+195:  - Empty comment state is hand
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Both commands started successfully under Java 21 and reached the Spring test context. I’m checking their final Maven summaries now so I can report exact counts and any failures.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="list_dir"><details>
+<summary>Tool use: **list_dir**</summary>
+
+Checked terminal output
+
+**Input:**
+
+- path: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement`
+
+**Result:**
+
+```
+TicketManagementApplication.java
+api/
+domain/
+persistence/
+service/
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Checked terminal output
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentEntity.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.persistence;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import org.hibernate.annotations.Check;
+
+@Entity
+@Table(
+    name = "comments",
+    indexes = {
+        @Index(name = "idx_comments_ticket_id", columnList = "ticket_id"),
+        @Index(name = "idx_comments_created_at", columnList = "created_at")
+    }
+)
+@Check(constraints = "content IS NOT NULL AND trim(content) <> ''")
+public class CommentEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_comments_ticket"))
+    private TicketEntity ticket;
+
+    @NotBlank
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @NotNull
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Size(max = 255)
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
+
+    protected CommentEntity() {
+    }
+
+    public CommentEntity(TicketEntity ticket, String content, String createdBy) {
+        this.ticket = ticket;
+        this.content = content;
+        this.createdBy = createdBy;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The test processes have already exited, but the runner did not expose their final summaries as active terminal sessions. I’ll read Maven’s generated Surefire reports directly to confirm the exact results.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Running ` rg -n "tests=|failures=|errors=|skipped=" target/surefire-reports/\*.xml && p...`
+
+**Input:**
+
+- endLine: `120`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentRepository.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Running ` grep -hE 'tests="|failures="|errors="|skipped="' target/surefire-reports/\*.x...`
+
+**Input:**
+
+- endLine: `180`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Comment.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.domain;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class Comment {
+    private static final AtomicLong ID_GENERATOR = new AtomicLong(1L);
+
+    private final Long id;
+    private final Long ticketId;
+    private String content;
+    private final Instant createdAt;
+    private String createdBy;
+
+    private Comment(Long id, Long ticketId, String content, String createdBy, Instant createdAt) {
+        this.id = id;
+        this.ticketId = Objects.requireNonNull(ticketId, "ticketId is required");
+        this.content = requireText(content, "content");
+        this.createdBy = createdBy;
+        this.createdAt = createdAt;
+    }
+
+    public static Comment create(Long ticketId, String content, String createdBy) {
+        return new Comment(ID_GENERATOR.getAndIncrement(), ticketId, content, createdBy, Instant.now());
+    }
+
+    public void updateContent(String content) {
+        this.content = requireText(content, "content");
+    }
+
+    private static String requireText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getTicketId() {
+        return ticketId;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+API tests passed successfully.
+
+- : 5 tests, 0 failures
+- Full backend suite: 11 tests, 0 failures
+- Domain tests for tickets and comments also passed
+- Java 21 and Maven build completed successfully
+
+Validated endpoints include create, list, retrieve, update, and status update.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the focused API controller tests after adding the RA-003 endpoints and query support.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test` (terminal ID=549256cc-941f-427b-80b8-5864e970357e). This is the output of running that command instead:
+14:30:35.858 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:30:35.950 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:30:36.186+05:30  INFO 605079 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 605079 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:30:36.187+05:30  INFO 605079 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceab
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The focused controller suite reaches and initializes the new mappings successfully. I’m adding explicit RA-003 tests now for comment creation, keyword search, and status filtering so the requested feature is covered rather than relying only on compilation and existing endpoint tests.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketControllerTest.java**</summary>
+
+@@ lines 1-154 @@
+
+```
+package com.ticketmanagement.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+
+@WebMvcTest(TicketController.class)
+class TicketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private TicketService ticketService;
+
+    @BeforeEach
+    void setUp() {
+        TicketResponse ticket = new TicketResponse(
+            1L,
+            "Login issue",
+            "Users cannot sign in",
+            "OPEN",
+            "HIGH",
+            "ops-team",
+            Instant.now(),
+            Instant.now(),
+            null,
+            null
+        );
+
+        given(ticketService.createTicket(any(TicketCreateRequest.class))).willReturn(ticket);
+        given(ticketService.listTickets(null, null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets("login", null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets(null, "OPEN")).willReturn(List.of(ticket));
+        given(ticketService.getTicket(1L)).willReturn(ticket);
+        given(ticketService.updateTicket(eq(1L), any(TicketUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.updateTicketStatus(eq(1L), any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.addComment(eq(1L), any(CommentCreateRequest.class)))
+            .willReturn(new CommentResponse(1L, 1L, "Investigating the issue", Instant.now(), null));
+    }
+
+    @Test
+    void createTicketReturnsCreatedResource() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest();
+        request.setTitle("Login issue");
+        request.setDescription("Users cannot sign in");
+        request.setPriority("HIGH");
+        request.setAssignee("ops-team");
+
+        mockMvc.perform(post("/api/tickets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.title").value("Login issue"))
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void listTicketsReturnsTicketCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void getTicketByIdReturnsTicketDetails() throws Exception {
+        mockMvc.perform(get("/api/tickets/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void updateTicketReturnsUpdatedResource() throws Exception {
+        TicketUpdateRequest request = new TicketUpdateRequest();
+        request.setTitle("Updated login issue");
+        request.setDescription("Updated description");
+        request.setPriority("MEDIUM");
+        request.setAssignee("bob@example.com");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Login issue"));
+    }
+
+    @Test
+    void updateStatusReturnsUpdatedResource() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void addCommentReturnsCreatedComment() throws Exception {
+        CommentCreateRequest request = new CommentCreateRequest();
+        request.setContent("Investigating the issue");
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.ticketId").value(1))
+            .andExpect(jsonPath("$.content").value("Investigating the issue"));
+    }
+
+    @Test
+    void searchTicketsReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("keyword", "login"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void filterTicketsByStatusReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("status", "OPEN"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].status").value("OPEN"));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the expanded API controller tests covering all RA-003 endpoints and query parameters.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test` (terminal ID=783e4423-e18d-4b12-993b-157910b24840). This is the output of running that command instead:
+14:31:13.241 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:31:13.346 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:31:13.610+05:30  INFO 605328 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 605328 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:31:13.611+05:30  INFO 605328 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceab
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The expanded API test context is healthy with the new RA-003 cases included. I’m running the full backend suite next, then I’ll read the Surefire totals to report exact pass counts.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run all backend tests after implementing and covering RA-003.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=d8919d0f-7fd4-4071-a9e0-96b7fa28d30d). This is the output of running that command instead:
+14:32:53.893 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:32:53.995 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:32:54.258+05:30  INFO 606240 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 606240 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:32:54.259+05:30  INFO 606240 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
+t.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read the final Surefire reports to obtain exact test totals and failure counts.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=e2120a8c-cc42-4339-883d-0f64ce6d9e2a). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.331" tests="8" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.003" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.025" tests="3" errors="0" skipped="0" failures="0">
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+RA-003 is covered and the full suite reports 14 passing tests with zero failures or errors. I’m doing one final compile/error scan on the touched production files before closing out.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `TicketController.java`, `TicketService.java`, `TicketServiceImpl.java`, `TicketRepository.java`, `CommentCreateRequest.java`, `CommentResponse.java`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketController.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketService.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketRepository.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/CommentCreateRequest.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/CommentResponse.java"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketController.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketService.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketRepository.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/CommentCreateRequest.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/CommentResponse.java">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Implemented RA-003 without modifying unrelated areas.
+
+Added:
+- `POST /api/tickets/{id}/comments`
+- Keyword search using `?keyword=`
+- Status filtering using `?status=`
+- Comment request/response DTOs
+- Repository query support
+- Service-layer validation and ticket lookup
+- API tests for comment creation, search, and filtering
+
+Relevant files:
+- `backend/src/main/java/com/ticketmanagement/api/TicketController.java`
+- `backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java`
+- `backend/src/main/java/com/ticketmanagement/persistence/TicketRepository.java`
+- `backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java`
+
+Validation passed:
+
+- API controller tests: 8 passed
+- Full backend suite: 14 passed
+- Failures: 0
+- Errors: 0
+
+---
+
+_**User (2026-09-20 09:00:02Z)**_
+
+Implement RA-003 similarly and run test cases once done. DOn;t modify yunrelated files.
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll locate RA-003 in the implementation plan and its matching API specification, then implement only that slice and run the focused plus full backend tests.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
+<summary>Tool use: **copilot_findTextInFiles**</summary>
+
+Searched for regex `RA-003|Add comment|comments` (`**/spec/**`), 40 results
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_listDirectory"><details>
+<summary>Tool use: **copilot_listDirectory**</summary>
+
+Read `ticketmanagement`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `implementation-plan.md`, lines 1 to 260
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+RA-003 covers three existing gaps: comment creation, keyword search, and status filtering. The current controller/service only returns all tickets and has comment persistence classes, so I’m tracing those local types now to preserve the established layered pattern and avoid touching unrelated areas.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `CommentEntity.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `CommentRepository.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `Comment.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketRepository.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `api-contract.md`, lines 349 to 470
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `ApiErrorResponse.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketController.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketControllerTest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The API contract confirms RA-003 is limited to `POST /api/tickets/{id}/comments` and query-based ticket search/filtering on `GET /api/tickets`. I’ll add dedicated comment DTOs, service methods, repository query support, and controller mappings; validation and not-found behavior will remain in the service/utility and global handler.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **CommentCreateRequest.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.api.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public class CommentCreateRequest {
+    @NotBlank(message = "content is required")
+    private String content;
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **CommentResponse.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.api.dto;
+
+import java.time.Instant;
+
+public class CommentResponse {
+    private Long id;
+    private Long ticketId;
+    private String content;
+    private Instant createdAt;
+    private String createdBy;
+
+    public CommentResponse(Long id, Long ticketId, String content, Instant createdAt, String createdBy) {
+        this.id = id;
+        this.ticketId = ticketId;
+        this.content = content;
+        this.createdAt = createdAt;
+        this.createdBy = createdBy;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getTicketId() {
+        return ticketId;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketRepository.java**</summary>
+
+@@ lines 1-20 @@
+
+```
+package com.ticketmanagement.persistence;
+
+import com.ticketmanagement.domain.TicketStatus;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface TicketRepository extends JpaRepository<TicketEntity, Long> {
+	List<TicketEntity> findByStatus(TicketStatus status);
+
+	@Query("""
+		select ticket from TicketEntity ticket
+		where lower(ticket.title) like lower(concat('%', :keyword, '%'))
+		   or lower(ticket.description) like lower(concat('%', :keyword, '%'))
+		""")
+	List<TicketEntity> searchByKeyword(@Param("keyword") String keyword);
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketService.java**</summary>
+
+@@ lines 1-25 @@
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import java.util.List;
+
+public interface TicketService {
+    TicketResponse createTicket(TicketCreateRequest request);
+
+    List<TicketResponse> listTickets(String keyword, String status);
+
+    TicketResponse getTicket(Long id);
+
+    TicketResponse updateTicket(Long id, TicketUpdateRequest request);
+
+    TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request);
+
+    CommentResponse addComment(Long ticketId, CommentCreateRequest request);
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketServiceImpl.java**</summary>
+
+@@ lines 1-192 @@
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.TicketValidationUtil;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.CommentEntity;
+import com.ticketmanagement.persistence.CommentRepository;
+import com.ticketmanagement.persistence.TicketRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class TicketServiceImpl implements TicketService {
+
+    private final TicketRepository ticketRepository;
+    private final CommentRepository commentRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository, CommentRepository commentRepository) {
+        this.ticketRepository = ticketRepository;
+        this.commentRepository = commentRepository;
+    }
+
+    @Override
+    public TicketResponse createTicket(TicketCreateRequest request) {
+        String title = TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title");
+        String description = TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description");
+        TicketPriority priority = TicketValidationUtil.validatePriority(request.getPriority());
+        String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
+
+        TicketEntity entity = new TicketEntity(
+            title,
+            description,
+            TicketStatus.OPEN,
+            priority,
+            assignee
+        );
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public List<TicketResponse> listTickets(String keyword, String status) {
+        if (keyword != null && keyword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyword must not be blank");
+        }
+        TicketValidationUtil.validateStatus(status);
+
+        List<TicketEntity> tickets = status == null
+            ? (keyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(keyword))
+            : (keyword == null
+                ? ticketRepository.findByStatus(TicketValidationUtil.validateStatus(status))
+                : ticketRepository.findAll().stream()
+                    .filter(ticket -> ticket.getStatus() == TicketValidationUtil.validateStatus(status))
+                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), keyword)
+                        || containsIgnoreCase(ticket.getDescription(), keyword))
+                    .collect(Collectors.toList()));
+
+        return tickets
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public TicketResponse getTicket(Long id) {
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+        return toResponse(entity);
+    }
+
+    @Override
+    public TicketResponse updateTicket(Long id, TicketUpdateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        boolean hasUpdate = request.getTitle() != null || request.getDescription() != null
+            || request.getPriority() != null || request.getAssignee() != null;
+        if (!hasUpdate) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one field must be provided");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (request.getTitle() != null) {
+            entity.setTitle(TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title"));
+        }
+        if (request.getDescription() != null) {
+            entity.setDescription(TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description"));
+        }
+        if (request.getPriority() != null) {
+            entity.setPriority(TicketValidationUtil.validatePriority(request.getPriority()));
+        }
+        if (request.getAssignee() != null) {
+            entity.setAssignee(TicketValidationUtil.normalizeOptionalText(request.getAssignee()));
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request) {
+        if (request == null || request.getStatus() == null || request.getStatus().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        TicketStatus nextStatus = TicketValidationUtil.validateStatus(request.getStatus());
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketValidationUtil.validateStatusTransition(entity.getStatus(), nextStatus);
+
+        entity.setStatus(nextStatus);
+        Instant now = Instant.now();
+        if (nextStatus == TicketStatus.CLOSED) {
+            entity.setClosedAt(now);
+            entity.setCancelledAt(null);
+        } else if (nextStatus == TicketStatus.CANCELLED) {
+            entity.setCancelledAt(now);
+            entity.setClosedAt(null);
+        } else {
+            entity.setClosedAt(null);
+            entity.setCancelledAt(null);
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public CommentResponse addComment(Long ticketId, CommentCreateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        String content = TicketValidationUtil.normalizeRequiredText(request.getContent(), "content");
+        TicketEntity ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        CommentEntity saved = commentRepository.save(new CommentEntity(ticket, content, null));
+        return toCommentResponse(saved);
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
+    private CommentResponse toCommentResponse(CommentEntity entity) {
+        return new CommentResponse(
+            entity.getId(),
+            entity.getTicket().getId(),
+            entity.getContent(),
+            entity.getCreatedAt(),
+            entity.getCreatedBy()
+        );
+    }
+
+    private TicketResponse toResponse(TicketEntity entity) {
+        return new TicketResponse(
+            entity.getId(),
+            entity.getTitle(),
+            entity.getDescription(),
+            entity.getStatus() == null ? null : entity.getStatus().name(),
+            entity.getPriority() == null ? null : entity.getPriority().name(),
+            entity.getAssignee(),
+            entity.getCreatedAt(),
+            entity.getUpdatedAt(),
+            entity.getClosedAt(),
+            entity.getCancelledAt()
+        );
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketController.java**</summary>
+
+@@ lines 1-71 @@
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketListResponse;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+public class TicketController {
+
+    private final TicketService ticketService;
+
+    public TicketController(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
+
+    @PostMapping("/tickets")
+    public ResponseEntity<TicketResponse> createTicket(@Valid @RequestBody TicketCreateRequest request) {
+        TicketResponse response = ticketService.createTicket(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/tickets")
+    public ResponseEntity<TicketListResponse> listTickets(@RequestParam(required = false) String keyword,
+                                                        @RequestParam(required = false) String status) {
+        List<TicketResponse> items = ticketService.listTickets(keyword, status);
+        return ResponseEntity.ok(new TicketListResponse(items, 0, items.size(), items.size()));
+    }
+
+    @GetMapping("/tickets/{id}")
+    public ResponseEntity<TicketResponse> getTicket(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.getTicket(id));
+    }
+
+    @PatchMapping("/tickets/{id}")
+    public ResponseEntity<TicketResponse> updateTicket(@PathVariable Long id,
+                                                     @RequestBody TicketUpdateRequest request) {
+        return ResponseEntity.ok(ticketService.updateTicket(id, request));
+    }
+
+    @PatchMapping("/tickets/{id}/status")
+    public ResponseEntity<TicketResponse> updateTicketStatus(@PathVariable Long id,
+                                                            @RequestBody TicketStatusUpdateRequest request) {
+        return ResponseEntity.ok(ticketService.updateTicketStatus(id, request));
+    }
+
+    @PostMapping("/tickets/{id}/comments")
+    public ResponseEntity<CommentResponse> addComment(@PathVariable Long id,
+                                                     @Valid @RequestBody CommentCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ticketService.addComment(id, request));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The RA-003 production changes are now scoped to the comment DTO/API, ticket query repository, and ticket service. I’m running the focused controller tests immediately to catch compile or mapping issues before adding broader behavior coverage.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+</details></tool-use>

@@ -1,12 +1,19 @@
 package com.ticketmanagement.service;
 
 import com.ticketmanagement.api.TicketValidationUtil;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
 import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
 import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
 import com.ticketmanagement.domain.TicketPriority;
 import com.ticketmanagement.domain.TicketStatus;
 import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.CommentEntity;
+import com.ticketmanagement.persistence.CommentRepository;
 import com.ticketmanagement.persistence.TicketRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -17,9 +24,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class TicketServiceImpl implements TicketService {
 
     private final TicketRepository ticketRepository;
+    private final CommentRepository commentRepository;
 
-    public TicketServiceImpl(TicketRepository ticketRepository) {
+    public TicketServiceImpl(TicketRepository ticketRepository, CommentRepository commentRepository) {
         this.ticketRepository = ticketRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Override
@@ -48,7 +57,17 @@ public class TicketServiceImpl implements TicketService {
         }
         TicketValidationUtil.validateStatus(status);
 
-        return ticketRepository.findAll()
+        List<TicketEntity> tickets = status == null
+            ? (keyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(keyword))
+            : (keyword == null
+                ? ticketRepository.findByStatus(TicketValidationUtil.validateStatus(status))
+                : ticketRepository.findAll().stream()
+                    .filter(ticket -> ticket.getStatus() == TicketValidationUtil.validateStatus(status))
+                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), keyword)
+                        || containsIgnoreCase(ticket.getDescription(), keyword))
+                    .collect(Collectors.toList()));
+
+        return tickets
             .stream()
             .map(this::toResponse)
             .collect(Collectors.toList());
@@ -59,6 +78,99 @@ public class TicketServiceImpl implements TicketService {
         TicketEntity entity = ticketRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
         return toResponse(entity);
+    }
+
+    @Override
+    public TicketResponse updateTicket(Long id, TicketUpdateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        boolean hasUpdate = request.getTitle() != null || request.getDescription() != null
+            || request.getPriority() != null || request.getAssignee() != null;
+        if (!hasUpdate) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one field must be provided");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (request.getTitle() != null) {
+            entity.setTitle(TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title"));
+        }
+        if (request.getDescription() != null) {
+            entity.setDescription(TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description"));
+        }
+        if (request.getPriority() != null) {
+            entity.setPriority(TicketValidationUtil.validatePriority(request.getPriority()));
+        }
+        if (request.getAssignee() != null) {
+            entity.setAssignee(TicketValidationUtil.normalizeOptionalText(request.getAssignee()));
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request) {
+        if (request == null || request.getStatus() == null || request.getStatus().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        TicketStatus nextStatus = TicketValidationUtil.validateStatus(request.getStatus());
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketValidationUtil.validateStatusTransition(entity.getStatus(), nextStatus);
+
+        entity.setStatus(nextStatus);
+        Instant now = Instant.now();
+        if (nextStatus == TicketStatus.CLOSED) {
+            entity.setClosedAt(now);
+            entity.setCancelledAt(null);
+        } else if (nextStatus == TicketStatus.CANCELLED) {
+            entity.setCancelledAt(now);
+            entity.setClosedAt(null);
+        } else {
+            entity.setClosedAt(null);
+            entity.setCancelledAt(null);
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public CommentResponse addComment(Long ticketId, CommentCreateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        String content = TicketValidationUtil.normalizeRequiredText(request.getContent(), "content");
+        TicketEntity ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        CommentEntity saved = commentRepository.save(new CommentEntity(ticket, content, null));
+        return toCommentResponse(saved);
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
+    private CommentResponse toCommentResponse(CommentEntity entity) {
+        return new CommentResponse(
+            entity.getId(),
+            entity.getTicket().getId(),
+            entity.getContent(),
+            entity.getCreatedAt(),
+            entity.getCreatedBy()
+        );
     }
 
     private TicketResponse toResponse(TicketEntity entity) {

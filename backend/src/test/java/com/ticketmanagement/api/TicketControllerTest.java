@@ -6,8 +6,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
 import com.ticketmanagement.api.dto.TicketCreateRequest;
 import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
 import com.ticketmanagement.service.TicketService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +25,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @WebMvcTest(TicketController.class)
@@ -52,7 +57,13 @@ class TicketControllerTest {
 
         given(ticketService.createTicket(any(TicketCreateRequest.class))).willReturn(ticket);
         given(ticketService.listTickets(null, null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets("login", null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets(null, "OPEN")).willReturn(List.of(ticket));
         given(ticketService.getTicket(1L)).willReturn(ticket);
+        given(ticketService.updateTicket(eq(1L), any(TicketUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.updateTicketStatus(eq(1L), any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.addComment(eq(1L), any(CommentCreateRequest.class)))
+            .willReturn(new CommentResponse(1L, 1L, "Investigating the issue", Instant.now(), null));
     }
 
     @Test
@@ -83,5 +94,59 @@ class TicketControllerTest {
         mockMvc.perform(get("/api/tickets/1"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void updateTicketReturnsUpdatedResource() throws Exception {
+        TicketUpdateRequest request = new TicketUpdateRequest();
+        request.setTitle("Updated login issue");
+        request.setDescription("Updated description");
+        request.setPriority("MEDIUM");
+        request.setAssignee("bob@example.com");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Login issue"));
+    }
+
+    @Test
+    void updateStatusReturnsUpdatedResource() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void addCommentReturnsCreatedComment() throws Exception {
+        CommentCreateRequest request = new CommentCreateRequest();
+        request.setContent("Investigating the issue");
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.ticketId").value(1))
+            .andExpect(jsonPath("$.content").value("Investigating the issue"));
+    }
+
+    @Test
+    void searchTicketsReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("keyword", "login"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void filterTicketsByStatusReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("status", "OPEN"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].status").value("OPEN"));
     }
 }

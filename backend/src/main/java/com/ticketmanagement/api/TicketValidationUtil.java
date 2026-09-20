@@ -41,6 +41,31 @@ public final class TicketValidationUtil {
         }
     }
 
+    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        if (currentStatus == null) {
+            if (nextStatus != TicketStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition from null to " + nextStatus);
+            }
+            return;
+        }
+
+        boolean allowed = switch (currentStatus) {
+            case OPEN -> nextStatus == TicketStatus.IN_PROGRESS || nextStatus == TicketStatus.CANCELLED;
+            case IN_PROGRESS -> nextStatus == TicketStatus.RESOLVED || nextStatus == TicketStatus.CANCELLED;
+            case RESOLVED -> nextStatus == TicketStatus.CLOSED;
+            default -> false;
+        };
+
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Invalid ticket status transition from " + currentStatus + " to " + nextStatus);
+        }
+    }
+
     public static String normalizeOptionalText(String value) {
         return value == null ? null : value.trim();
     }
