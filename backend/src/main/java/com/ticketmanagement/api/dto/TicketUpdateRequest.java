@@ -1,9 +1,13 @@
 package com.ticketmanagement.api.dto;
 
+import jakarta.validation.constraints.Size;
+
 public class TicketUpdateRequest {
+    @Size(max = 255, message = "title must not exceed 255 characters")
     private String title;
     private String description;
     private String priority;
+    @Size(max = 255, message = "assignee must not exceed 255 characters")
     private String assignee;
 
     public String getTitle() {

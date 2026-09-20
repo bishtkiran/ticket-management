@@ -2,10 +2,12 @@ package com.ticketmanagement.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class TicketCreateRequest {
 
     @NotBlank(message = "title is required")
+    @Size(max = 255, message = "title must not exceed 255 characters")
     private String title;
 
     @NotBlank(message = "description is required")
@@ -14,6 +16,7 @@ public class TicketCreateRequest {
     @NotNull(message = "priority is required")
     private String priority;
 
+    @Size(max = 255, message = "assignee must not exceed 255 characters")
     private String assignee;
 
     public String getTitle() {

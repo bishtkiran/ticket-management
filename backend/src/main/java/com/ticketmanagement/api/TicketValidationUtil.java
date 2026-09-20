@@ -17,6 +17,14 @@ public final class TicketValidationUtil {
         return value.trim();
     }
 
+    public static String validateTitle(String value) {
+        String title = normalizeRequiredText(value, "title");
+        if (title.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not exceed 255 characters");
+        }
+        return title;
+    }
+
     public static TicketPriority validatePriority(String rawPriority) {
         if (rawPriority == null || rawPriority.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priority is required");
@@ -39,6 +47,13 @@ public final class TicketValidationUtil {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
         }
+    }
+
+    public static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim();
     }
 
     public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
@@ -67,6 +82,14 @@ public final class TicketValidationUtil {
     }
 
     public static String normalizeOptionalText(String value) {
-        return value == null ? null : value.trim();
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        if (normalized.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "assignee must not exceed 255 characters");
+        }
+        return normalized;
     }
 }

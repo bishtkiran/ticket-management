@@ -33,7 +33,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public TicketResponse createTicket(TicketCreateRequest request) {
-        String title = TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title");
+        String title = TicketValidationUtil.validateTitle(request.getTitle());
         String description = TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description");
         TicketPriority priority = TicketValidationUtil.validatePriority(request.getPriority());
         String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
@@ -52,19 +52,17 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public List<TicketResponse> listTickets(String keyword, String status) {
-        if (keyword != null && keyword.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyword must not be blank");
-        }
-        TicketValidationUtil.validateStatus(status);
+        String normalizedKeyword = TicketValidationUtil.normalizeSearchKeyword(keyword);
+        TicketStatus normalizedStatus = TicketValidationUtil.validateStatus(status);
 
-        List<TicketEntity> tickets = status == null
-            ? (keyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(keyword))
-            : (keyword == null
-                ? ticketRepository.findByStatus(TicketValidationUtil.validateStatus(status))
+        List<TicketEntity> tickets = normalizedStatus == null
+            ? (normalizedKeyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(normalizedKeyword))
+            : (normalizedKeyword == null
+                ? ticketRepository.findByStatus(normalizedStatus)
                 : ticketRepository.findAll().stream()
-                    .filter(ticket -> ticket.getStatus() == TicketValidationUtil.validateStatus(status))
-                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), keyword)
-                        || containsIgnoreCase(ticket.getDescription(), keyword))
+                    .filter(ticket -> ticket.getStatus() == normalizedStatus)
+                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), normalizedKeyword)
+                        || containsIgnoreCase(ticket.getDescription(), normalizedKeyword))
                     .collect(Collectors.toList()));
 
         return tickets
@@ -96,7 +94,7 @@ public class TicketServiceImpl implements TicketService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
 
         if (request.getTitle() != null) {
-            entity.setTitle(TicketValidationUtil.normalizeRequiredText(request.getTitle(), "title"));
+            entity.setTitle(TicketValidationUtil.validateTitle(request.getTitle()));
         }
         if (request.getDescription() != null) {
             entity.setDescription(TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description"));

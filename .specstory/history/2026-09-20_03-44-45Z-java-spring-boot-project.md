@@ -17405,30 +17405,172 @@ Implement RA-003 similarly and run test cases once done. DOn;t modify yunrelated
 
 _**Agent (copilot/auto)**_
 
+<think><details><summary>Thought Process</summary>
+I’ll compare BV-001’s specified validation rules with the current request DTOs, validation utility, service, and exception handler, then make only the validation-slice changes and run focused tests.
+
+The current implementation already centralizes required text and priority checks, but BV-001 exposes two gaps: update DTOs lack request-level constraints, and assignee validation currently only trims values, allowing blank or oversized assignees. I’m checking the exact assignee contract and error-shape expectations before tightening those boundaries.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
 I’ll locate RA-003 in the implementation plan and its matching API specification, then implement only that slice and run the focused plus full backend tests.
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
-<summary>Tool use: **copilot_findTextInFiles**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Searched for regex `RA-003|Add comment|comments` (`**/spec/**`), 40 results
+
+**Input:**
+
+- endLine: `115`
+- filePath: `/home/kiran/Documents/ticket-management/spec/implementation-plan.md`
+- startLine: `88`
+
+**Result:**
+
+```
+### BV-001: Define input validation rules for ticket creation and updates
+- Objective: Document and confirm the backend validation rules for required fields, priority, assignee, and request structure.
+- Relevant specs: requirements VR-001 to VR-003, VR-007; API contract §4, §7; architecture §7.
+- Acceptance criteria:
+  - Required ticket fields are clearly defined.
+  - Invalid priority and invalid assignee situations are defined.
+  - Validation rules are separated from controller logic and assigned to backend validation boundaries.
+
+### BV-002: Define validation rules for comments, search, and status filtering
+- Objective: Confirm backend rules for comments, blank search terms, and supported status filters.
+- Relevant specs: requirements VR-004 to VR-006, VR-008, VR-009; API contract §9-11; state-machine §3-6.
+- Acceptance criteria:
+  - Comment validation requirements are defined.
+  - Dedicated keyword search requires a non-blank keyword.
+  - The normal ticket listing may be requested without a keyword.
+  - Blank search behavior is consistent with the UI and API contracts.
+  - Supported status values are documented and invalid status values are rejected.
+
+## 6. State machine
+
+### SM-001: Document the ticket lifecycle and allowed transitions
+- Objective: Confirm the complete lifecycle and the approved valid transitions used throughout the backend and UI.
+-Relevant specs: requirements FR-014 to FR-016, BR-009 to BR-012, AC-010 to AC-012; state-machine §1-8.- 
+-Acceptance criteria:
+  - All states are defined: OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED.
+  - Valid transitions are listed and explicit.
+  - Terminal states and invalid reversions are documented.
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_listDirectory"><details>
-<summary>Tool use: **copilot_listDirectory**</summary>
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
 
 Read `ticketmanagement`
+
+**Input:**
+
+- includePattern: `spec/requirements.md`
+- isRegexp: `true`
+- maxResults: `100`
+- query: `VR-001|VR-002|VR-003|VR-007|BV-001|validation|assignee`
+
+**Result:**
+
+```
+Found 15 matches in 1 file for "VR-001|VR-002|VR-003|VR-007|BV-001|validation|assignee"
+
+spec/requirements.md
+10:- AA-002: Assignee — a user assigned to a ticket who can receive updates and participate in ticket resolution.
+11:- AA-003: System — the application platform responsible for persistence, validation, business rules, and error handling.
+21:- FR-007: The system shall allow a support user to update the assignee for a ticket.
+51:- BR-003: A ticket may have an assignee or remain unassigned.Changing the assignee must be validated and persisted by the backend.
+55:- BR-007: Updates to ticket fields must be stored only after successful backend validation.
+63:## 6. Validation Requirements
+65:- VR-001: The system shall reject empty or missing required ticket fields such as title and description.
+66:- VR-002: The system shall reject invalid ticket priority values that are not recognized by the supported priority model.
+67:- VR-003: If an assignee is provided, it shall conform to the assignee representation defined in the data model and API contract.
+71:- VR-007: The system shall validate all backend requests before changing system state or persisting data.
+82:- ER-006: The system shall handle validation failures without corrupting ticket data.
+91:- AC-003: A user can update a ticket title, description, priority, and assignee with valid input.
+109:- AS-004: An assignee is represented as a user or stakeholder associated with a ticket, but the application may use a simplified representation unless otherwise specified.
+110:- AS-005: The UI is expected to display errors meaningfully, while the backend remains the source of validation and business enforcement.
+131:- Full assignee/user management
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `implementation-plan.md`, lines 1 to 260
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+public final class TicketValidationUtil {
+
+    private TicketValidationUtil() {
+    }
+
+    public static String normalizeRequiredText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public static TicketPriority validatePriority(String rawPriority) {
+        if (rawPriority == null || rawPriority.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priority is required");
+        }
+
+        try {
+            return TicketPriority.valueOf(rawPriority.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket priority");
+        }
+    }
+
+    public static TicketStatus validateStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TicketStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
+        }
+    }
+
+    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        if (currentStatus == null) {
+            if (nextStatus != TicketStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition from null to " + nextStatus);
+            }
+            return;
+
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -17437,18 +17579,130 @@ RA-003 covers three existing gaps: comment creation, keyword search, and status 
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `CommentEntity.java`
+
+**Input:**
+
+- endLine: `180`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketCreateRequest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public class TicketCreateRequest {
+
+    @NotBlank(message = "title is required")
+    private String title;
+
+    @NotBlank(message = "description is required")
+    private String description;
+
+    @NotNull(message = "priority is required")
+    private String priority;
+
+    private String assignee;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `CommentRepository.java`
+
+**Input:**
+
+- endLine: `180`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api.dto;
+
+public class TicketUpdateRequest {
+    private String title;
+    private String description;
+    private String priority;
+    private String assignee;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -17971,6 +18225,1734 @@ public class TicketController {
 _**Agent (copilot/auto)**_
 
 The RA-003 production changes are now scoped to the comment DTO/API, ticket query repository, and ticket service. I’m running the focused controller tests immediately to catch compile or mapping issues before adding broader behavior coverage.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `assignee|validation|@NotBlank|@Size|request` (`**/spec/api-contract.md`), 65 results
+
+**Input:**
+
+- includePattern: `spec/api-contract.md`
+- isRegexp: `true`
+- maxResults: `80`
+- query: `assignee|validation|@NotBlank|@Size|request`
+
+**Result:**
+
+```
+Found 65 matches in 1 file for "assignee|validation|@NotBlank|@Size|request"
+
+spec/api-contract.md
+6:- All endpoints use JSON for request and response bodies.
+7:- Request and response payloads must be consistent and predictable across controllers.
+8:- Client and server validation are both required: the frontend may provide convenience validation, but the backend is authoritative.
+9:- Validation failures and business-rule violations must return structured error responses.
+24:A failing request should return a consistent JSON error payload, for example:
+29:    "code": "VALIDATION_ERROR",
+47:- `field`: the affected request field, when applicable.
+48:- `message`: human-readable explanation of the validation or business error.
+63:- `assignee`: assignee identifier or name, when set
+78:### 4.2 Request body
+85:  "assignee": "alice@example.com"
+89:### 4.3 Request validation
+94:- `assignee` may be optional depending on the chosen workflow.
+102:### 4.5 Validation errors
+104:- `400 Bad Request` for malformed or missing required fields
+114:- A request that violates ticket creation rules
+119:- `400 Bad Request` on invalid structure or missing required fields
+120:- `422 Unprocessable Entity` for business validation violations if used by the application
+136:### 5.3 Request body
+138:- No request body.
+155:      "assignee": "alice@example.com",
+166:### 5.5 Validation errors
+168:- `400 Bad Request` for invalid query parameter values
+184:- `400 Bad Request` on invalid request parameters
+197:### 6.3 Request body
+199:- No request body.
+206:### 6.5 Validation errors
+208:- `400 Bad Request` for malformed identifier values
+221:- `400 Bad Request` for invalid path data
+235:### 7.3 Request body
+242:  "assignee": "bob@example.com"
+246:### 7.4 Request validation
+252:- `assignee` may be empty or null if unassigned.
+259:### 7.6 Validation errors
+261:- `400 Bad Request` for malformed payload or invalid field values
+271:- Invalid assignee value or invalid priority value
+276:- `400 Bad Request` for i
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `TicketValidationUtil|invalid priority|assignee|validation` (`**/backend/src/test/**`), 4 results
+
+**Input:**
+
+- includePattern: `backend/src/test/**`
+- isRegexp: `true`
+- maxResults: `100`
+- query: `TicketValidationUtil|invalid priority|assignee|validation`
+
+**Result:**
+
+```
+Found 4 matches in 3 files for "TicketValidationUtil|invalid priority|assignee|validation"
+
+backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java
+75:        request.setAssignee("ops-team");
+105:        request.setAssignee("bob@example.com");
+
+backend/src/test/java/com/ticketmanagement/domain/CommentTest.java
+28:    void commentContentUpdateUsesSameValidationRule() {
+
+backend/src/test/java/com/ticketmanagement/domain/TicketTest.java
+20:        assertEquals("ops-team", ticket.getAssignee());
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `requirements.md`, lines 60 to 82
+
+**Input:**
+
+- endLine: `82`
+- filePath: `/home/kiran/Documents/ticket-management/spec/requirements.md`
+- startLine: `60`
+
+**Result:**
+
+```
+- BR-012: The backend must enforce the state machine and must not rely on the frontend to determine valid transitions.
+- BR-013: Every newly created ticket shall have status `OPEN`.
+
+## 6. Validation Requirements
+
+- VR-001: The system shall reject empty or missing required ticket fields such as title and description.
+- VR-002: The system shall reject invalid ticket priority values that are not recognized by the supported priority model.
+- VR-003: If an assignee is provided, it shall conform to the assignee representation defined in the data model and API contract.
+- VR-004: The system shall reject invalid comment payloads or comments attached to unknown tickets.
+- VR-005: Search terms shall be trimmed before processing. A blank search term shall be treated as no search filter.
+- VR-006: A status filter shall accept only one of the supported ticket status values: OPEN, IN_PROGRESS, RESOLVED, CLOSED, or CANCELLED.
+- VR-007: The system shall validate all backend requests before changing system state or persisting data.
+- VR-008: The system shall validate ticket status transitions against the defined backend state machine before allowing a change.
+- VR-009: The system shall reject CLOSED → OPEN, RESOLVED → OPEN, and CANCELLED → OPEN as invalid transitions.
+
+## 7. Error-Handling Requirements
+
+- ER-001: The system shall return a meaningful error when a requested ticket does not exist.
+- ER-002: The system shall return a meaningful error when required input is missing or invalid.
+- ER-003: The system shall return a meaningful error when a comment cannot be added because the parent ticket is invalid or missing.
+- ER-004: The system shall return a meaningful error when a persistence or database operation fails.
+- ER-005: The system shall surface user-friendly error messages in the UI rather than exposing raw internal system errors.
+- ER-006: The system shall handle validation failures without corrupting ticket data.
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `data-model.md`, lines 45 to 90
+
+**Input:**
+
+- endLine: `90`
+- filePath: `/home/kiran/Documents/ticket-management/spec/data-model.md`
+- startLine: `45`
+
+**Result:**
+
+```
+
+- `id` must be unique and not null.
+- `title` must not be null and must contain meaningful non-whitespace content.
+- `description` must not be null and must contain meaningful non-whitespace content.
+- `status` must be one of the supported lifecycle values.
+- `priority` must be one of the supported priority values.
+- `created_at` must be set on creation and must not be null.
+- `updated_at` must be set on creation and updated on each modification.
+- `closed_at` and `cancelled_at` must be null unless the ticket reaches the corresponding terminal state.
+- A ticket must not have conflicting terminal time fields for incompatible states.
+
+### 3.4 Status and lifecycle rules
+
+The system must enforce the following valid lifecycle states:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+Allowed transitions:
+
+- OPEN -> IN_PROGRESS
+- IN_PROGRESS -> RESOLVED
+- RESOLVED -> CLOSED
+- OPEN -> CANCELLED
+- IN_PROGRESS -> CANCELLED
+
+All other transitions are invalid and must be rejected by the backend.
+- New tickets must start in `OPEN`.
+
+### 3.5 Indexes
+
+- Index on `status` to support filtering by ticket status.
+- Index on `priority` if priority-based queries or reporting are expected.
+- Index on `created_at` for listing and sorting by newest or oldest tickets.
+- Index on `updated_at` for activity-based retrieval and sorting.
+- Optional full-text or trigram index on `title` and `description` for keyword search, if the application needs more advanced text search.
+
+### 3.6 Design decisions
+
+- `status` is stored as a string or enum-backed value because the lifecycle is explicit and simple to validate.
+- `assignee` is intentionally flexible in this specification to allow either a direct user identifier or a textual representation, depending on implementation choice.
+- `created_at` and `updated_at` provide auditing and sorting support.
+- `closed_at` and `cancelled_at` capture when a ticket reached a terminal state, which helps with reporting and state clarity.
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketEntity.java`, lines 20 to 85
+
+**Input:**
+
+- endLine: `85`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java`
+- startLine: `20`
+
+**Result:**
+
+```
+import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import org.hibernate.annotations.Check;
+
+@Entity
+@Table(
+    name = "tickets",
+    indexes = {
+        @Index(name = "idx_tickets_status", columnList = "status"),
+        @Index(name = "idx_tickets_priority", columnList = "priority"),
+        @Index(name = "idx_tickets_created_at", columnList = "created_at"),
+        @Index(name = "idx_tickets_updated_at", columnList = "updated_at")
+    }
+)
+@Check(constraints = "title IS NOT NULL AND trim(title) <> ''")
+@Check(constraints = "description IS NOT NULL AND trim(description) <> ''")
+@Check(constraints = "status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'CANCELLED')")
+@Check(constraints = "priority IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')")
+@Check(constraints = "((status = 'CLOSED' AND closed_at IS NOT NULL) OR (status <> 'CLOSED' AND closed_at IS NULL)) AND ((status = 'CANCELLED' AND cancelled_at IS NOT NULL) OR (status <> 'CANCELLED' AND cancelled_at IS NULL))")
+public class TicketEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @NotBlank
+    @Size(max = 255)
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+
+    @NotBlank
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    private String description;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
+    private TicketStatus status;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false, length = 32)
+    private TicketPriority priority;
+
+    @Size(max = 255)
+    @Column(name = "assignee", length = 255)
+    private String assignee;
+
+    @NotNull
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @NotNull
+    @Column(nam
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for text `normalizeOptionalText` (`**/backend/src/main/**`), 3 results
+
+**Input:**
+
+- includePattern: `backend/src/main/**`
+- isRegexp: `false`
+- maxResults: `20`
+- query: `normalizeOptionalText`
+
+**Result:**
+
+```
+Found 3 matches in 2 files for "normalizeOptionalText"
+
+backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java
+69:    public static String normalizeOptionalText(String value) {
+
+backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java
+39:        String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
+108:            entity.setAssignee(TicketValidationUtil.normalizeOptionalText(request.getAssignee()));
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The specification leaves assignee format intentionally flexible, while persistence limits it to 255 characters and update requests may use empty/null to unassign. I’ll enforce that exact rule, add title/assignee size validation at the request boundary, and ensure service validation runs before persistence for both create and update paths.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketValidationUtil.java**</summary>
+
+@@ lines 1-90 @@
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+public final class TicketValidationUtil {
+
+    private TicketValidationUtil() {
+    }
+
+    public static String normalizeRequiredText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public static String validateTitle(String value) {
+        String title = normalizeRequiredText(value, "title");
+        if (title.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not exceed 255 characters");
+        }
+        return title;
+    }
+
+    public static TicketPriority validatePriority(String rawPriority) {
+        if (rawPriority == null || rawPriority.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priority is required");
+        }
+
+        try {
+            return TicketPriority.valueOf(rawPriority.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket priority");
+        }
+    }
+
+    public static TicketStatus validateStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TicketStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
+        }
+    }
+
+    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        if (currentStatus == null) {
+            if (nextStatus != TicketStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition from null to " + nextStatus);
+            }
+            return;
+        }
+
+        boolean allowed = switch (currentStatus) {
+            case OPEN -> nextStatus == TicketStatus.IN_PROGRESS || nextStatus == TicketStatus.CANCELLED;
+            case IN_PROGRESS -> nextStatus == TicketStatus.RESOLVED || nextStatus == TicketStatus.CANCELLED;
+            case RESOLVED -> nextStatus == TicketStatus.CLOSED;
+            default -> false;
+        };
+
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Invalid ticket status transition from " + currentStatus + " to " + nextStatus);
+        }
+    }
+
+    public static String normalizeOptionalText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        if (normalized.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "assignee must not exceed 255 characters");
+        }
+        return normalized;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketServiceImpl.java**</summary>
+
+@@ lines 1-192 @@
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.TicketValidationUtil;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.CommentEntity;
+import com.ticketmanagement.persistence.CommentRepository;
+import com.ticketmanagement.persistence.TicketRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class TicketServiceImpl implements TicketService {
+
+    private final TicketRepository ticketRepository;
+    private final CommentRepository commentRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository, CommentRepository commentRepository) {
+        this.ticketRepository = ticketRepository;
+        this.commentRepository = commentRepository;
+    }
+
+    @Override
+    public TicketResponse createTicket(TicketCreateRequest request) {
+        String title = TicketValidationUtil.validateTitle(request.getTitle());
+        String description = TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description");
+        TicketPriority priority = TicketValidationUtil.validatePriority(request.getPriority());
+        String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
+
+        TicketEntity entity = new TicketEntity(
+            title,
+            description,
+            TicketStatus.OPEN,
+            priority,
+            assignee
+        );
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public List<TicketResponse> listTickets(String keyword, String status) {
+        if (keyword != null && keyword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyword must not be blank");
+        }
+        TicketValidationUtil.validateStatus(status);
+
+        List<TicketEntity> tickets = status == null
+            ? (keyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(keyword))
+            : (keyword == null
+                ? ticketRepository.findByStatus(TicketValidationUtil.validateStatus(status))
+                : ticketRepository.findAll().stream()
+                    .filter(ticket -> ticket.getStatus() == TicketValidationUtil.validateStatus(status))
+                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), keyword)
+                        || containsIgnoreCase(ticket.getDescription(), keyword))
+                    .collect(Collectors.toList()));
+
+        return tickets
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public TicketResponse getTicket(Long id) {
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+        return toResponse(entity);
+    }
+
+    @Override
+    public TicketResponse updateTicket(Long id, TicketUpdateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        boolean hasUpdate = request.getTitle() != null || request.getDescription() != null
+            || request.getPriority() != null || request.getAssignee() != null;
+        if (!hasUpdate) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one field must be provided");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (request.getTitle() != null) {
+            entity.setTitle(TicketValidationUtil.validateTitle(request.getTitle()));
+        }
+        if (request.getDescription() != null) {
+            entity.setDescription(TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description"));
+        }
+        if (request.getPriority() != null) {
+            entity.setPriority(TicketValidationUtil.validatePriority(request.getPriority()));
+        }
+        if (request.getAssignee() != null) {
+            entity.setAssignee(TicketValidationUtil.normalizeOptionalText(request.getAssignee()));
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request) {
+        if (request == null || request.getStatus() == null || request.getStatus().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        TicketStatus nextStatus = TicketValidationUtil.validateStatus(request.getStatus());
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketValidationUtil.validateStatusTransition(entity.getStatus(), nextStatus);
+
+        entity.setStatus(nextStatus);
+        Instant now = Instant.now();
+        if (nextStatus == TicketStatus.CLOSED) {
+            entity.setClosedAt(now);
+            entity.setCancelledAt(null);
+        } else if (nextStatus == TicketStatus.CANCELLED) {
+            entity.setCancelledAt(now);
+            entity.setClosedAt(null);
+        } else {
+            entity.setClosedAt(null);
+            entity.setCancelledAt(null);
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public CommentResponse addComment(Long ticketId, CommentCreateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        String content = TicketValidationUtil.normalizeRequiredText(request.getContent(), "content");
+        TicketEntity ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        CommentEntity saved = commentRepository.save(new CommentEntity(ticket, content, null));
+        return toCommentResponse(saved);
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
+    private CommentResponse toCommentResponse(CommentEntity entity) {
+        return new CommentResponse(
+            entity.getId(),
+            entity.getTicket().getId(),
+            entity.getContent(),
+            entity.getCreatedAt(),
+            entity.getCreatedBy()
+        );
+    }
+
+    private TicketResponse toResponse(TicketEntity entity) {
+        return new TicketResponse(
+            entity.getId(),
+            entity.getTitle(),
+            entity.getDescription(),
+            entity.getStatus() == null ? null : entity.getStatus().name(),
+            entity.getPriority() == null ? null : entity.getPriority().name(),
+            entity.getAssignee(),
+            entity.getCreatedAt(),
+            entity.getUpdatedAt(),
+            entity.getClosedAt(),
+            entity.getCancelledAt()
+        );
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketCreateRequest.java**</summary>
+
+@@ lines 1-55 @@
+
+```
+package com.ticketmanagement.api.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+public class TicketCreateRequest {
+
+    @NotBlank(message = "title is required")
+    @Size(max = 255, message = "title must not exceed 255 characters")
+    private String title;
+
+    @NotBlank(message = "description is required")
+    private String description;
+
+    @NotNull(message = "priority is required")
+    private String priority;
+
+    @Size(max = 255, message = "assignee must not exceed 255 characters")
+    private String assignee;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketUpdateRequest.java**</summary>
+
+@@ lines 1-46 @@
+
+```
+package com.ticketmanagement.api.dto;
+
+import jakarta.validation.constraints.Size;
+
+public class TicketUpdateRequest {
+    @Size(max = 255, message = "title must not exceed 255 characters")
+    private String title;
+    private String description;
+    private String priority;
+    @Size(max = 255, message = "assignee must not exceed 255 characters")
+    private String assignee;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketController.java**</summary>
+
+@@ lines 1-71 @@
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketListResponse;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+public class TicketController {
+
+    private final TicketService ticketService;
+
+    public TicketController(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
+
+    @PostMapping("/tickets")
+    public ResponseEntity<TicketResponse> createTicket(@Valid @RequestBody TicketCreateRequest request) {
+        TicketResponse response = ticketService.createTicket(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/tickets")
+    public ResponseEntity<TicketListResponse> listTickets(@RequestParam(required = false) String keyword,
+                                                        @RequestParam(required = false) String status) {
+        List<TicketResponse> items = ticketService.listTickets(keyword, status);
+        return ResponseEntity.ok(new TicketListResponse(items, 0, items.size(), items.size()));
+    }
+
+    @GetMapping("/tickets/{id}")
+    public ResponseEntity<TicketResponse> getTicket(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.getTicket(id));
+    }
+
+    @PatchMapping("/tickets/{id}")
+    public ResponseEntity<TicketResponse> updateTicket(@PathVariable Long id,
+                                                     @Valid @RequestBody TicketUpdateRequest request) {
+        return ResponseEntity.ok(ticketService.updateTicket(id, request));
+    }
+
+    @PatchMapping("/tickets/{id}/status")
+    public ResponseEntity<TicketResponse> updateTicketStatus(@PathVariable Long id,
+                                                            @RequestBody TicketStatusUpdateRequest request) {
+        return ResponseEntity.ok(ticketService.updateTicketStatus(id, request));
+    }
+
+    @PostMapping("/tickets/{id}/comments")
+    public ResponseEntity<CommentResponse> addComment(@PathVariable Long id,
+                                                     @Valid @RequestBody CommentCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ticketService.addComment(id, request));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the focused API tests after tightening ticket create and update validation boundaries.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ControllerTest' test` (terminal ID=005e5cfb-e4da-4118-a70a-9348e96972ca). This is the output of running that command instead:
+14:35:53.898 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:35:54.005 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:35:54.278+05:30  INFO 607948 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 607948 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:35:54.279+05:30  INFO 607948 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceab
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The focused API suite still passes after the validation tightening. To make BV-001 auditable, I’m adding narrow unit coverage for required title validation, supported priority parsing, and assignee normalization/length rules before running the complete suite.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `TicketValidationUtilTest.java`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.ticketmanagement.domain.TicketPriority;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketValidationUtilTest {
+
+    @Test
+    void titleIsRequiredAndTrimmed() {
+        assertEquals("Login issue", TicketValidationUtil.validateTitle("  Login issue  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle("  "));
+    }
+
+    @Test
+    void priorityMustBeSupported() {
+        assertEquals(TicketPriority.HIGH, TicketValidationUtil.validatePriority(" high "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("urgent"));
+    }
+
+    @Test
+    void assigneeMayBeUnassignedButCannotExceedStorageLimit() {
+        assertNull(TicketValidationUtil.normalizeOptionalText("  "));
+        assertEquals("alice@example.com", TicketValidationUtil.normalizeOptionalText(" alice@example.com "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeOptionalText("a".repeat(256)));
+    }
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketValidationUtilTest.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.ticketmanagement.domain.TicketPriority;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketValidationUtilTest {
+
+    @Test
+    void titleIsRequiredAndTrimmed() {
+        assertEquals("Login issue", TicketValidationUtil.validateTitle("  Login issue  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle("  "));
+    }
+
+    @Test
+    void priorityMustBeSupported() {
+        assertEquals(TicketPriority.HIGH, TicketValidationUtil.validatePriority(" high "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("urgent"));
+    }
+
+    @Test
+    void assigneeMayBeUnassignedButCannotExceedStorageLimit() {
+        assertNull(TicketValidationUtil.normalizeOptionalText("  "));
+        assertEquals("alice@example.com", TicketValidationUtil.normalizeOptionalText(" alice@example.com "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeOptionalText("a".repeat(256)));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the complete backend test suite including the new BV-001 validation tests.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=0c469a27-b1da-4987-905c-3dfa1d33b878). This is the output of running that command instead:
+14:36:11.220 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:36:11.334 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:36:11.597+05:30  INFO 608209 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 608209 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:36:11.598+05:30  INFO 608209 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use,
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read Surefire reports to confirm exact test counts after adding BV-001 coverage.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=88c83686-2c6a-4fb5-86ee-0d7ffae2e88b). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.37" tests="8" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketVal
+idationUtilTest" time="0.007" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.004" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.004" tests="3" errors="0" skipped="0" failures="0">
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+BV-001 validation coverage is complete: the full suite reports 17 passing tests with zero failures or errors. I’m doing the final static error check on the changed validation files, then I’ll summarize the exact behavior now enforced.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `TicketValidationUtil.java`, `TicketServiceImpl.java`, `TicketCreateRequest.java`, `TicketUpdateRequest.java`, `TicketController.java`, `TicketValidationUtilTest.java`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketCreateRequest.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketController.java",
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketCreateRequest.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketController.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Implemented BV-001 validation rules without modifying unrelated files.
+
+Changes include:
+
+- Required title and description validation.
+- Supported priority validation.
+- Title maximum length validation of 255 characters.
+- Assignee validation:
+  - Optional and flexible textual representation.
+  - Blank values treated as unassigned.
+  - Maximum length of 255 characters.
+- Update requests now use `@Valid`.
+- Service validation runs before persistence.
+- Added focused validation tests.
+
+Files changed:
+- `backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java`
+- `backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java`
+- `backend/src/main/java/com/ticketmanagement/api/dto/TicketCreateRequest.java`
+- `backend/src/main/java/com/ticketmanagement/api/dto/TicketUpdateRequest.java`
+- `backend/src/main/java/com/ticketmanagement/api/TicketController.java`
+- `backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java`
+
+Validation completed successfully:
+
+- 17 tests passed
+- 0 failures
+- 0 errors
+
+---
+
+_**User (2026-09-20 09:05:15Z)**_
+
+Implememt BV-001 and make sure implememnation shoild align with the specification and requirements.
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll compare BV-001’s specified validation rules with the current request DTOs, validation utility, service, and exception handler, then make only the validation-slice changes and run focused tests.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
+<summary>Tool use: **copilot_findTextInFiles**</summary>
+
+Searched for regex `VR-001|VR-002|VR-003|VR-007|BV-001|validation|assignee` (`**/spec/requirements.md`), 15 results
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `implementation-plan.md`, lines 88 to 115
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketValidationUtil.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketCreateRequest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketUpdateRequest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The current implementation already centralizes required text and priority checks, but BV-001 exposes two gaps: update DTOs lack request-level constraints, and assignee validation currently only trims values, allowing blank or oversized assignees. I’m checking the exact assignee contract and error-shape expectations before tightening those boundaries.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
+<summary>Tool use: **copilot_findTextInFiles**</summary>
+
+Searched for regex `assignee|validation|@NotBlank|@Size|request` (`**/spec/api-contract.md`), 65 results
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
+<summary>Tool use: **copilot_findTextInFiles**</summary>
+
+Searched for regex `TicketValidationUtil|invalid priority|assignee|validation` (`**/backend/src/test/**`), 4 results
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `requirements.md`, lines 60 to 82
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `data-model.md`, lines 45 to 90
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketEntity.java`, lines 20 to 85
+</details></tool-use>
+
+---
+
+_**User (2026-09-20 09:07:54Z)**_
+
+Implement BV-002 similarly.
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll implement BV-002 at the existing validation boundary: normalize blank search terms to no filter, keep status values restricted to the five supported states, and preserve comment payload/parent-ticket validation. I’ll add focused tests for keyword and status validation, then run the full backend suite.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketServiceImpl.java`, lines 35 to 85
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketValidationUtil.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `CommentCreateRequest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketValidationUtilTest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `requirements.md`, lines 63 to 75
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The requirements explicitly state that search terms must be trimmed and whitespace-only terms must behave as no filter, so I’m correcting the current blank-keyword rejection to match VR-005. Status validation will remain strict and case-insensitive, while comment validation stays enforced both at the request boundary and service boundary.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketValidationUtil.java**</summary>
+
+@@ lines 1-97 @@
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+public final class TicketValidationUtil {
+
+    private TicketValidationUtil() {
+    }
+
+    public static String normalizeRequiredText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public static String validateTitle(String value) {
+        String title = normalizeRequiredText(value, "title");
+        if (title.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not exceed 255 characters");
+        }
+        return title;
+    }
+
+    public static TicketPriority validatePriority(String rawPriority) {
+        if (rawPriority == null || rawPriority.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priority is required");
+        }
+
+        try {
+            return TicketPriority.valueOf(rawPriority.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket priority");
+        }
+    }
+
+    public static TicketStatus validateStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TicketStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
+        }
+    }
+
+    public static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim();
+    }
+
+    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        if (currentStatus == null) {
+            if (nextStatus != TicketStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition from null to " + nextStatus);
+            }
+            return;
+        }
+
+        boolean allowed = switch (currentStatus) {
+            case OPEN -> nextStatus == TicketStatus.IN_PROGRESS || nextStatus == TicketStatus.CANCELLED;
+            case IN_PROGRESS -> nextStatus == TicketStatus.RESOLVED || nextStatus == TicketStatus.CANCELLED;
+            case RESOLVED -> nextStatus == TicketStatus.CLOSED;
+            default -> false;
+        };
+
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Invalid ticket status transition from " + currentStatus + " to " + nextStatus);
+        }
+    }
+
+    public static String normalizeOptionalText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        if (normalized.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "assignee must not exceed 255 characters");
+        }
+        return normalized;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketServiceImpl.java**</summary>
+
+@@ lines 1-190 @@
+
+```
+package com.ticketmanagement.service;
+
+import com.ticketmanagement.api.TicketValidationUtil;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.CommentEntity;
+import com.ticketmanagement.persistence.CommentRepository;
+import com.ticketmanagement.persistence.TicketRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class TicketServiceImpl implements TicketService {
+
+    private final TicketRepository ticketRepository;
+    private final CommentRepository commentRepository;
+
+    public TicketServiceImpl(TicketRepository ticketRepository, CommentRepository commentRepository) {
+        this.ticketRepository = ticketRepository;
+        this.commentRepository = commentRepository;
+    }
+
+    @Override
+    public TicketResponse createTicket(TicketCreateRequest request) {
+        String title = TicketValidationUtil.validateTitle(request.getTitle());
+        String description = TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description");
+        TicketPriority priority = TicketValidationUtil.validatePriority(request.getPriority());
+        String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
+
+        TicketEntity entity = new TicketEntity(
+            title,
+            description,
+            TicketStatus.OPEN,
+            priority,
+            assignee
+        );
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public List<TicketResponse> listTickets(String keyword, String status) {
+        String normalizedKeyword = TicketValidationUtil.normalizeSearchKeyword(keyword);
+        TicketStatus normalizedStatus = TicketValidationUtil.validateStatus(status);
+
+        List<TicketEntity> tickets = normalizedStatus == null
+            ? (normalizedKeyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(normalizedKeyword))
+            : (normalizedKeyword == null
+                ? ticketRepository.findByStatus(normalizedStatus)
+                : ticketRepository.findAll().stream()
+                    .filter(ticket -> ticket.getStatus() == normalizedStatus)
+                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), normalizedKeyword)
+                        || containsIgnoreCase(ticket.getDescription(), normalizedKeyword))
+                    .collect(Collectors.toList()));
+
+        return tickets
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public TicketResponse getTicket(Long id) {
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+        return toResponse(entity);
+    }
+
+    @Override
+    public TicketResponse updateTicket(Long id, TicketUpdateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        boolean hasUpdate = request.getTitle() != null || request.getDescription() != null
+            || request.getPriority() != null || request.getAssignee() != null;
+        if (!hasUpdate) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one field must be provided");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (request.getTitle() != null) {
+            entity.setTitle(TicketValidationUtil.validateTitle(request.getTitle()));
+        }
+        if (request.getDescription() != null) {
+            entity.setDescription(TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description"));
+        }
+        if (request.getPriority() != null) {
+            entity.setPriority(TicketValidationUtil.validatePriority(request.getPriority()));
+        }
+        if (request.getAssignee() != null) {
+            entity.setAssignee(TicketValidationUtil.normalizeOptionalText(request.getAssignee()));
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request) {
+        if (request == null || request.getStatus() == null || request.getStatus().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        TicketStatus nextStatus = TicketValidationUtil.validateStatus(request.getStatus());
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketValidationUtil.validateStatusTransition(entity.getStatus(), nextStatus);
+
+        entity.setStatus(nextStatus);
+        Instant now = Instant.now();
+        if (nextStatus == TicketStatus.CLOSED) {
+            entity.setClosedAt(now);
+            entity.setCancelledAt(null);
+        } else if (nextStatus == TicketStatus.CANCELLED) {
+            entity.setCancelledAt(now);
+            entity.setClosedAt(null);
+        } else {
+            entity.setClosedAt(null);
+            entity.setCancelledAt(null);
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public CommentResponse addComment(Long ticketId, CommentCreateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        String content = TicketValidationUtil.normalizeRequiredText(request.getContent(), "content");
+        TicketEntity ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        CommentEntity saved = commentRepository.save(new CommentEntity(ticket, content, null));
+        return toCommentResponse(saved);
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
+    private CommentResponse toCommentResponse(CommentEntity entity) {
+        return new CommentResponse(
+            entity.getId(),
+            entity.getTicket().getId(),
+            entity.getContent(),
+            entity.getCreatedAt(),
+            entity.getCreatedBy()
+        );
+    }
+
+    private TicketResponse toResponse(TicketEntity entity) {
+        return new TicketResponse(
+            entity.getId(),
+            entity.getTitle(),
+            entity.getDescription(),
+            entity.getStatus() == null ? null : entity.getStatus().name(),
+            entity.getPriority() == null ? null : entity.getPriority().name(),
+            entity.getAssignee(),
+            entity.getCreatedAt(),
+            entity.getUpdatedAt(),
+            entity.getClosedAt(),
+            entity.getCancelledAt()
+        );
+    }
+}
+
+```
+
+@@ lines 190-192 @@ (deleted)
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketValidationUtilTest.java**</summary>
+
+@@ lines 1-48 @@
+
+```
+package com.ticketmanagement.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketValidationUtilTest {
+
+    @Test
+    void titleIsRequiredAndTrimmed() {
+        assertEquals("Login issue", TicketValidationUtil.validateTitle("  Login issue  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle("  "));
+    }
+
+    @Test
+    void priorityMustBeSupported() {
+        assertEquals(TicketPriority.HIGH, TicketValidationUtil.validatePriority(" high "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("urgent"));
+    }
+
+    @Test
+    void assigneeMayBeUnassignedButCannotExceedStorageLimit() {
+        assertNull(TicketValidationUtil.normalizeOptionalText("  "));
+        assertEquals("alice@example.com", TicketValidationUtil.normalizeOptionalText(" alice@example.com "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeOptionalText("a".repeat(256)));
+    }
+
+    @Test
+    void searchKeywordIsTrimmedAndBlankMeansNoFilter() {
+        assertEquals("login", TicketValidationUtil.normalizeSearchKeyword("  login  "));
+        assertNull(TicketValidationUtil.normalizeSearchKeyword("   "));
+        assertNull(TicketValidationUtil.normalizeSearchKeyword(null));
+    }
+
+    @Test
+    void statusFilterAcceptsOnlySupportedStates() {
+        assertEquals(TicketStatus.IN_PROGRESS, TicketValidationUtil.validateStatus(" in_progress "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateStatus("UNKNOWN"));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The focused validation and controller tests pass after the BV-002 change. I’m running the complete backend suite now to ensure search normalization and strict status filtering did not regress ticket lifecycle or persistence behavior.
 
 _**Agent (copilot/auto)**_
 
