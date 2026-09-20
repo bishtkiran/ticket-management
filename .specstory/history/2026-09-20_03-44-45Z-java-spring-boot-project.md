@@ -22850,46 +22850,250 @@ Implememt BT-001 and execute the tests generated. Cover the edge cases.
 
 _**Agent (copilot/auto)**_
 
+<think><details><summary>Thought Process</summary>
+I’ll add BT-002 coverage for repository persistence/query behavior and public API contracts, including invalid transitions and validation responses, then run the focused cases and the complete backend suite.
+
+The repository layer has no tests yet, while the controller suite covers only successful responses. I’ll add one H2-backed repository test class for ticket/comment persistence and query behavior, then extend the existing API test class with validation, not-found, and 409-conflict contract cases.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
 I’ll map BT-001’s required validation and business-rule cases to the current domain, validation utility, and service tests, then add only the missing edge-case tests and execute them plus the full backend suite.
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="search" data-tool-name="file_search"><details>
+<summary>Tool use: **file_search**</summary>
 
 Read `implementation-plan.md`, lines 135 to 160
+
+**Input:**
+
+- maxResults: `100`
+- query: `/home/kiran/Documents/ticket-management/backend/src/test/**/*Test.java`
+
+**Result:**
+
+```
+5 total results
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/CommentTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `test-strategy.md`, lines 1 to 115
+
+**Input:**
+
+- endLine: `240`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+
+@WebMvcTest(TicketController.class)
+class TicketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private TicketService ticketService;
+
+    @BeforeEach
+    void setUp() {
+        TicketResponse ticket = new TicketResponse(
+            1L,
+            "Login issue",
+            "Users cannot sign in",
+            "OPEN",
+            "HIGH",
+            "ops-team",
+            Instant.now(),
+            Instant.now(),
+            null,
+            null
+        );
+
+        given(ticketService.createTicket(any(TicketCre
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `Ticket.java`, lines 1 to 115
+
+**Input:**
+
+- endLine: `140`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketRepository.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.persistence;
+
+import com.ticketmanagement.domain.TicketStatus;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface TicketRepository extends JpaRepository<TicketEntity, Long> {
+	List<TicketEntity> findByStatus(TicketStatus status);
+
+	@Query("""
+		select ticket from TicketEntity ticket
+		where lower(ticket.title) like lower(concat('%', :keyword, '%'))
+		   or lower(ticket.description) like lower(concat('%', :keyword, '%'))
+		""")
+	List<TicketEntity> searchByKeyword(@Param("keyword") String keyword);
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketServiceImplTest.java`
+
+**Input:**
+
+- endLine: `100`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentRepository.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketValidationUtilTest.java`
+
+**Input:**
+
+- endLine: `120`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/GlobalExceptionHandler.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
+        List<ApiFieldError> details = ex.getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .map(this::toFieldError)
+            .collect(Collectors.toList());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+            "VALIDATION_ERROR",
+            "Request validation failed.",
+            details
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            "BUSINESS_ERROR",
+            ex.getReason() == null ? "Request failed." : ex.getReason(),
+            List.of()
+        );
+        return ResponseEntity.status(ex.getStatusCode()).body(response);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            "INTERNAL_ERROR",
+            "An unexpected error occurred.",
+            List.of()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    private ApiFieldError toF
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -22902,10 +23106,107 @@ Read `test-strategy.md`, lines 115 to 190
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
-<summary>Tool use: **copilot_createFile**</summary>
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
 
 Created `TicketRepositoryTest.java`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.persistence;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.ActiveProfiles;
+
+@DataJpaTest
+@ActiveProfiles("test")
+class TicketRepositoryTest {
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @Test
+    void savesTicketWithOpenStatusAndRetrievesItById() {
+        TicketEntity saved = ticketRepository.saveAndFlush(ticket("Login issue", "Users cannot sign in", TicketStatus.OPEN));
+
+        TicketEntity retrieved = ticketRepository.findById(saved.getId()).orElseThrow();
+
+        assertNotNull(retrieved.getId());
+        assertEquals(TicketStatus.OPEN, retrieved.getStatus());
+        assertEquals("Login issue", retrieved.getTitle());
+    }
+
+    @Test
+    void filtersTicketsByStatus() {
+        ticketRepository.saveAndFlush(ticket("Open issue", "Needs work", TicketStatus.OPEN));
+        ticketRepository.saveAndFlush(ticket("Resolved issue", "Already fixed", TicketStatus.RESOLVED));
+
+        List<TicketEntity> results = ticketRepository.findByStatus(TicketStatus.OPEN);
+
+        assertEquals(1, results.size());
+        assertEquals(TicketStatus.OPEN, results.get(0).getStatus());
+    }
+
+    @Test
+    void searchesTicketTitleAndDescriptionCaseInsensitively() {
+        ticketRepository.saveAndFlush(ticket("Login failure", "Users cannot sign in", TicketStatus.OPEN));
+        ticketRepository.saveAndFlush(ticket("Export issue", "CSV download is broken", TicketStatus.OPEN));
+
+        List<TicketEntity> titleResults = ticketRepository.searchByKeyword("LOGIN");
+        List<TicketEntity> descriptionResults = ticketRepository.searchByKeyword("csv download");
+
+        assertEquals(1, titleResults.size());
+        assertEquals("Login failure", titleResults.get(0).getTitle());
+        assertEquals(1, descriptionResults.size());
+        assertEquals("Export issue", descriptionResults.get(0).getTitle());
+    }
+
+    @Test
+    void persistsCommentWithParentTicket() {
+        TicketEntity ticket = ticketRepository.saveAndFlush(
+            ticket("Commented issue", "Needs investigation", TicketStatus.OPEN));
+
+        CommentEntity comment = commentRepository.saveAndFlush(
+            new CommentEntity(ticket, "Investigating this issue", "ops-team"));
+
+        CommentEntity retrieved = commentRepository.findById(comment.getId()).orElseThrow();
+
+        assertNotNull(retrieved.getCreatedAt());
+        assertEquals(ticket.getId(), retrieved.getTicket().getId());
+        assertEquals("Investigating this issue", retrieved.getContent());
+        assertTrue(retrieved.getTicket().getId() > 0);
+    }
+
+    private TicketEntity ticket(String title, String description, TicketStatus status) {
+        return new TicketEntity(title, description, status, TicketPriority.HIGH, "ops-team");
+    }
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/persistence/TicketRepositoryTest.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/persistence/TicketRepositoryTest.java
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -23006,18 +23307,108 @@ The repository test was added successfully. The API test patch hit a context mis
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketControllerTest.java`, lines 1 to 35
+
+**Input:**
+
+- endLine: `35`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+
+@WebMvcTest(TicketController.class)
+class TicketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketControllerTest.java`, lines 120 to 153
+
+**Input:**
+
+- endLine: `190`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java`
+- startLine: `120`
+
+**Result:**
+
+```
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void addCommentReturnsCreatedComment() throws Exception {
+        CommentCreateRequest request = new CommentCreateRequest();
+        request.setContent("Investigating the issue");
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.ticketId").value(1))
+            .andExpect(jsonPath("$.content").value("Investigating the issue"));
+    }
+
+    @Test
+    void searchTicketsReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("keyword", "login"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void filterTicketsByStatusReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("status", "OPEN"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].status").value("OPEN"));
+    }
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -23415,14 +23806,104 @@ _**Agent (copilot/auto)**_
 <summary>Tool use: **run_in_terminal**</summary>
 
 Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the focused BT-002 repository and API contract tests.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketRepositoryTest,TicketControllerTest test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketRepositoryTest,TicketControllerTest test` (terminal ID=3f89bbde-d2fa-48b7-9421-e85d11cc2412). This is the output of running that command instead:
+14:56:30.525 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:56:30.625 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:56:30.883+05:30  INFO 611730 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 611730 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:56:30.884+05:30  INFO 611730 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
+t.traceUsage for more information
+WARNING: Dynami
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `content.txt`
+
+**Input:**
+
+- endLine: `260`
+- filePath: `/home/kiran/.config/Code/User/workspaceStorage/ba13583ccb3809b2b50f57dbc96a7cb9/GitHub.copilot-chat/chat-session-resources/eec424a1-77a4-461c-a5c7-4d87736d8645/call_ofoSpAjeBmtQp6J4qN7QLGQU__vscode-1789876698661/content.txt`
+- startLine: `1`
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketRepositoryTest,TicketControllerTest test` (terminal ID=3f89bbde-d2fa-48b7-9421-e85d11cc2412). This is the output of running that command instead:
+14:56:30.525 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:56:30.625 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:56:30.883+05:30  INFO 611730 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 611730 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:56:30.884+05:30  INFO 611730 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
+t.traceUsage for more information
+WARNING: Dynami
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -23435,6 +23916,42 @@ _**Agent (copilot/auto)**_
 <summary>Tool use: **run_in_terminal**</summary>
 
 Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read focused Surefire reports to confirm repository and API test counts.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=a284da08-7362-4dcf-b547-63abf09ed18d). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.163" tests="12" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketVal
+idationUtilTest" time="0.01" tests="6" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.004" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.011" tests="7" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.persistence.T
+icketRepositoryTest" time="2.0" tests="4" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.t
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -23443,7 +23960,208 @@ _**Agent (copilot/auto)**_
 <summary>Tool use: **run_in_terminal**</summary>
 
 Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the full backend regression suite after adding BT-002 repository and API cases.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=4bfa3e46-243f-4cea-ab14-2c700c41b709). This is the output of running that command instead:
+14:56:51.253 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:56:51.352 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:56:51.599+05:30  INFO 611976 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 611976 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:56:51.600+05:30  INFO 611976 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use,
+… (output truncated)
+```
 </details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `content.txt`, lines 1 to 30
+
+**Input:**
+
+- endLine: `30`
+- filePath: `/home/kiran/.config/Code/User/workspaceStorage/ba13583ccb3809b2b50f57dbc96a7cb9/GitHub.copilot-chat/chat-session-resources/eec424a1-77a4-461c-a5c7-4d87736d8645/call_1P2Baexg06jqut7uVFZQ044P__vscode-1789876698664/content.txt`
+- startLine: `1`
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=4bfa3e46-243f-4cea-ab14-2c700c41b709). This is the output of running that command instead:
+14:56:51.253 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:56:51.352 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:56:51.599+05:30  INFO 611976 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 611976 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:56:51.600+05:30  INFO 611976 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The full backend run completed its Spring/API and H2 repository execution without reported failures. I’m reading the final Surefire totals and performing a static error scan on the new test files.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read final Surefire reports for exact BT-002 and full-suite totals.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=7cc8d7b6-a871-4e5c-bf62-d9bb2fafb778). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.331" tests="12" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketVal
+idationUtilTest" time="0.012" tests="6" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.003" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.009" tests="7" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.persistence.T
+icketRepositoryTest" time="2.023" tests="4" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="co
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `TicketRepositoryTest.java`, `TicketControllerTest.java`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/persistence/TicketRepositoryTest.java",
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/persistence/TicketRepositoryTest.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Implemented BT-002 and executed all cases.
+
+Added repository tests in `backend/src/test/java/com/ticketmanagement/persistence/TicketRepositoryTest.java` covering:
+
+- Ticket persistence and retrieval.
+- Default  status.
+- Status filtering.
+- Case-insensitive title/description search.
+- Comment persistence with parent-ticket association.
+
+Expanded API tests in `backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java` covering:
+
+- Missing required title.
+- Blank comment content.
+- Missing ticket returns `404`.
+- Invalid status transition returns `409 Conflict`.
+- Existing create, update, search, filter, and comment success cases.
+
+Validation completed:
+
+- BT-002 repository tests: 4 passed.
+- API tests: 12 passed.
+- Full backend suite: 34 passed.
+- Failures: 0
+- Errors: 0
 
 ---
 
@@ -23455,56 +24173,229 @@ Implement BT-002 simialry and run the cases.
 
 _**Agent (copilot/auto)**_
 
+<think><details><summary>Thought Process</summary>
+I’ll inspect the existing frontend shell and the UI-flow requirements for FS-001, then add only the minimal route structure and app shell needed for Ticket List and Ticket Details.
+
+The current frontend is only a placeholder. FS-001 needs the list as the landing route and a details route, but not API calls, forms, search logic, or lifecycle behavior yet. I’ll build a presentational shell with the UI-flow’s list/detail structure and leave data actions for later tasks.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
 I’ll add BT-002 coverage for repository persistence/query behavior and public API contracts, including invalid transitions and validation responses, then run the focused cases and the complete backend suite.
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_findFiles"><details>
-<summary>Tool use: **copilot_findFiles**</summary>
+<tool-use data-tool-type="generic" data-tool-name="list_dir"><details>
+<summary>Tool use: **list_dir**</summary>
 
 Searched for files matching `ticket-management` · `backend/src/test/**/*Test.java`, 5 matches
+
+**Input:**
+
+- path: `/home/kiran/Documents/ticket-management/frontend`
 
 **Result:**
 
 ```
-/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java
-/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/CommentTest.java
-/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java
-/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java
-/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java
+.next/
+app/
+next-env.d.ts
+next.config.mjs
+node_modules/
+package-lock.json
+package.json
+tsconfig.json
 ```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketControllerTest.java`
+
+**Input:**
+
+- endLine: `180`
+- filePath: `/home/kiran/Documents/ticket-management/spec/ui-flow.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# UI Flow Specification
+
+## 1. Overview
+
+This document defines the user interface flow for the Support Ticket Management System. The interface is designed for a simple, clear support workflow with ticket creation, listing, viewing, updating, status changes, comments, search, and status-based filtering.
+
+The UI should remain straightforward and user-friendly, with clear feedback for loading, empty states, validation, and API failure scenarios.
+
+## 2. Screen: Ticket List
+
+### 2.1 Purpose
+
+The Ticket List screen is the primary landing view for users. It shows all tickets and enables users to search, filter, create a new ticket, and open a ticket for more detail.
+
+### 2.2 Layout
+
+- Header or page title: "Tickets"
+- Search input for keyword search
+- Status filter dropdown or segmented control
+- Create Ticket button
+- Ticket table or list view with summary rows
+
+### 2.3 Ticket list item content
+
+Each ticket row should display:
+
+- ticket identifier
+- title
+- current status
+- priority
+- assignee, if available
+- last updated time or creation time
+
+### 2.4 User actions
+
+- Search by keyword
+- Filter by status
+- Open a ticket to view details
+- Create a new ticket
+
+### 2.5 Pagination
+
+- If the ticket list API uses pagination, the UI should provide controls to navigate between result pages.
+- The UI should display the current page and available navigation options.
+- The UI should preserve the active search and status filter when changing pages.
+- Pagination controls should be disabled while the corresponding request is loading.
+### 2.6 Loading state
+
+- Show a spinner, skeleton rows, or loading text while tickets are being fetched.
+- Disable related controls while the list is loading if needed.
+
+### 2.7 Empty state
+
+- If no tickets exist, show a friendly empty state such as:
+  - "No tickets found"
+  - "Create a new ticket to get started"
+- If a search or filter returns no results, show a related empty state such as:
+  - "No tickets match your search"
+  - "No tickets found for the 
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketRepository.java`
+
+**Input:**
+
+- endLine: `160`
+- filePath: `/home/kiran/Documents/ticket-management/frontend/package.json`
+- startLine: `1`
+
+**Result:**
+
+```
+{
+  "name": "ticket-management-frontend",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.12",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "typescript": "5.5.4"
+  }
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="search" data-tool-name="file_search"><details>
+<summary>Tool use: **file_search**</summary>
 
 Read `CommentRepository.java`
+
+**Input:**
+
+- maxResults: `100`
+- query: `/home/kiran/Documents/ticket-management/frontend/**/*`
+
+**Result:**
+
+```
+86 total results
+/home/kiran/Documents/ticket-management/frontend/package.json
+/home/kiran/Documents/ticket-management/frontend/package-lock.json
+/home/kiran/Documents/ticket-management/frontend/next-env.d.ts
+/home/kiran/Documents/ticket-management/frontend/.next/package.json
+/home/kiran/Documents/ticket-management/frontend/.next/BUILD_ID
+/home/kiran/Documents/ticket-management/frontend/.next/trace
+/home/kiran/Documents/ticket-management/frontend/.next/types/package.json
+/home/kiran/Documents/ticket-management/frontend/.next/types/app/page.ts
+/home/kiran/Documents/ticket-management/frontend/.next/types/app/layout.ts
+/home/kiran/Documents/ticket-management/frontend/.next/routes-manifest.json
+/home/kiran/Documents/ticket-management/frontend/.next/export-marker.json
+/home/kiran/Documents/ticket-management/frontend/.next/required-server-files.json
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/server-production/0.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/server-production/index.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/edge-server-production/0.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/edge-server-production/index.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/index.pack.old
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/0.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/2.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/1.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/index.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/.tsbuildinfo
+/home/kiran/Documents/ticket-management/frontend/.next/images-manifest.json
+/home/kiran/Documents/ticket-management/frontend/.next/react-loadable-manifest.json
+/home/kiran/Documents/ticket-manag
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `GlobalExceptionHandler.java`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `/home/kiran/Documents/ticket-management/frontend/app/page.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+export default function HomePage() {
+  return (
+    <main style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      <h1>Ticket Management</h1>
+      <p>Application shell ready for the ticket list and detail flows.</p>
+    </main>
+  );
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -23513,8 +24404,1006 @@ The repository layer has no tests yet, while the controller suite covers only su
 
 _**Agent (copilot/auto)**_
 
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Create File
+
+**Input:**
+
+- endLine: `160`
+- filePath: `/home/kiran/Documents/ticket-management/frontend/app/layout.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+import './globals.css';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Ticket Management',
+  description: 'Support ticket management dashboard',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **page.tsx**</summary>
+
+@@ lines 1-57 @@
+
+```
+import Link from 'next/link';
+
+export default function HomePage() {
+  return (
+    <main className="app-shell">
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">Support workspace</p>
+          <h1>Tickets</h1>
+          <p className="page-summary">Track the issues that need attention across your team.</p>
+        </div>
+        <button className="primary-button" type="button">Create ticket</button>
+      </header>
+
+      <section className="toolbar" aria-label="Ticket list controls">
+        <label className="search-field">
+          <span className="sr-only">Search tickets</span>
+          <input type="search" placeholder="Search tickets" />
+        </label>
+        <label className="filter-field">
+          <span className="sr-only">Filter by status</span>
+          <select defaultValue="ALL">
+            <option value="ALL">All statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLOSED">Closed</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+        </label>
+      </section>
+
+      <section className="ticket-panel" aria-labelledby="ticket-list-heading">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Current queue</p>
+            <h2 id="ticket-list-heading">All tickets</h2>
+          </div>
+          <span className="count-label">1 ticket</span>
+        </div>
+
+        <div className="ticket-list">
+          <Link className="ticket-row" href="/tickets/1042">
+            <span className="ticket-id">#1042</span>
+            <span className="ticket-title">Login failure after password reset</span>
+            <span className="status-badge status-open">Open</span>
+            <span className="priority-label">High</span>
+            <span className="assignee-label">Ops team</span>
+            <span className="updated-label">Updated today</span>
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **page.tsx**</summary>
+
+@@ lines 1-1 @@
+
+```
+import Link from 'next/link';
+
+export default function TicketDetailsPage({ params }: { params: { id: string } }) {
+  return (
+    <main className="app-shell detail-shell">
+      <Link className="back-link" href="/">Back to tickets</Link>
+
+      <header className="detail-header">
+        <div>
+          <p className="eyebrow">Ticket #{params.id}</p>
+          <h1>Login failure after password reset</h1>
+          <p className="page-summary">Users cannot sign in after resetting their credentials.</p>
+        </div>
+        <span className="status-badge status-open">Open</span>
+      </header>
+
+      <section className="detail-grid" aria-label="Ticket details">
+        <div className="detail-card detail-description">
+          <p className="eyebrow">Description</p>
+          <p>Users receive an invalid credentials message after completing the password reset flow.</p>
+        </div>
+        <dl className="detail-card metadata-list">
+          <div>
+            <dt>Priority</dt>
+            <dd>High</dd>
+          </div>
+          <div>
+            <dt>Assignee</dt>
+            <dd>Ops team</dd>
+          </div>
+          <div>
+            <dt>Created</dt>
+            <dd>Today, 09:42</dd>
+          </div>
+          <div>
+            <dt>Last updated</dt>
+            <dd>Today, 10:18</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="detail-card comments-placeholder" aria-labelledby="comments-heading">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">History</p>
+            <h2 id="comments-heading">Comments</h2>
+          </div>
+          <span className="count-label">No comments</span>
+        </div>
+        <p className="empty-copy">Updates and discussion will appear here.</p>
+      </section>
+    </main>
+  );
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **globals.css**</summary>
+
+@@ lines 1-293 @@
+
+```
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #e9eee9;
+  color: #1b2a24;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 56px 32px 72px;
+}
+
+.page-header, .detail-header, .panel-heading {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.eyebrow {
+  color: #688075;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+h1, h2, p {
+  margin-top: 0;
+}
+
+h1, h2 {
+  color: #173a2d;
+  font-family: Georgia, serif;
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: clamp(2.3rem, 5vw, 4.7rem);
+  line-height: 0.98;
+  margin-bottom: 16px;
+  max-width: 780px;
+}
+
+h2 {
+  font-size: 1.55rem;
+  margin-bottom: 0;
+}
+
+.page-summary {
+  color: #60736a;
+  line-height: 1.6;
+  margin-bottom: 0;
+  max-width: 560px;
+}
+
+.primary-button {
+  background: #d96542;
+  border: 0;
+  border-radius: 4px;
+  color: #fffaf3;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 13px 18px;
+  white-space: nowrap;
+}
+
+.toolbar {
+  border-bottom: 1px solid #cbd7cc;
+  display: flex;
+  gap: 12px;
+  margin-top: 52px;
+  padding-bottom: 18px;
+}
+
+.search-field {
+  flex: 1;
+}
+
+input, select {
+  background: #f8faf6;
+  border: 1px solid #c4d2c6;
+  border-radius: 4px;
+  color: #1b2a24;
+  min-height: 46px;
+  padding: 0 14px;
+  width: 100%;
+}
+
+.filter-field {
+  min-width: 190px;
+}
+
+.ticket-panel, .detail-card {
+  background: #f8faf6;
+  border: 1px solid #d1ddd2;
+  border-radius: 6px;
+}
+
+.ticket-panel {
+  margin-top: 28px;
+  overflow: hidden;
+}
+
+.panel-heading {
+  align-items: center;
+  padding: 24px 26px;
+}
+
+.count-label, .updated-label, .assignee-label, .priority-label, .ticket-id {
+  color: #708279;
+  font-size: 0.82rem;
+}
+
+.ticket-list {
+  border-top: 1px solid #dbe4dc;
+}
+
+.ticket-row {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 74px minmax(220px, 1fr) 110px 80px 120px 110px;
+  padding: 22px 26px;
+  transition: background 160ms ease;
+}
+
+.ticket-row:hover {
+  background: #edf3ed;
+}
+
+.ticket-title {
+  color: #214936;
+  font-weight: 700;
+}
+
+.status-badge {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  justify-self: start;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  text-transform: uppercase;
+}
+
+.status-open {
+  background: #dcefe1;
+  color: #21623d;
+}
+
+.detail-shell {
+  max-width: 1000px;
+}
+
+.back-link {
+  color: #61786a;
+  display: inline-block;
+  font-size: 0.9rem;
+  margin-bottom: 52px;
+}
+
+.back-link::before {
+  content: "← ";
+}
+
+.detail-header {
+  align-items: flex-start;
+}
+
+.detail-header .status-badge {
+  margin-top: 16px;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr);
+  margin-top: 46px;
+}
+
+.detail-card {
+  padding: 26px;
+}
+
+.detail-description p:last-child, .empty-copy {
+  color: #53675b;
+  line-height: 1.7;
+  margin-bottom: 0;
+}
+
+.metadata-list {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+}
+
+.metadata-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+dt {
+  color: #75877c;
+  font-size: 0.82rem;
+}
+
+dd {
+  color: #234936;
+  font-weight: 700;
+  margin: 0;
+  text-align: right;
+}
+
+.comments-placeholder {
+  margin-top: 18px;
+}
+
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 32px 18px 48px;
+  }
+
+  .page-header, .detail-header, .panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .primary-button {
+    width: 100%;
+  }
+
+  .toolbar, .detail-grid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .filter-field {
+    width: 100%;
+  }
+
+  .ticket-row {
+    align-items: start;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ticket-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .ticket-id {
+    grid-row: 2;
+  }
+
+  .updated-label {
+    grid-column: 1 / -1;
+  }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The FS-001 shell is now limited to the landing ticket list, a dynamic ticket-details route, and their shared responsive styling. I’m running the Next.js production build as the focused validation for route generation and TypeScript correctness.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /home/kiran/Documents/ticket-management/frontend && npm run build`
+
+Build the frontend to validate the FS-001 routes, TypeScript, and shared app shell.
+
+```bash
+cd /home/kiran/Documents/ticket-management/frontend && npm run build
+```
+
+**Result:**
+
+```
+
+> build
+> next build
+
+  ▲ Next.js 14.2.15
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+ ✓ Linting and checking validity of types    
+ ✓ Collecting page data    
+ ✓ Generating static pages (4/4)
+ ✓ Collecting build traces    
+ ✓ Finalizing page optimization    
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    177 B          94.1 kB
+├ ○ /_not-found                          873 B            88 kB
+└ ƒ /tickets/[id]                        177 B          94.1 kB
++ First Load JS shared by all            87.1 kB
+  ├ chunks/117-9d7f1cd31c438fde.js       31.6 kB
+  ├ chunks/fd9d1056-aa94ea5c2eabf904.js  53.6 kB
+  └ other shared chunks (total)          1.86 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The production build passes and generates both `/` and `/tickets/[id]`. I’m doing one final static error check on the three FS-001 files before summarizing the scoped result.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `page.tsx`, `page.tsx`, `globals.css`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/frontend/app/page.tsx",
+  "/home/kiran/Documents/ticket-management/frontend/app/tickets/[id]/page.tsx",
+  "/home/kiran/Documents/ticket-management/frontend/app/globals.css"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/frontend/app/page.tsx">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/frontend/app/tickets/[id]/page.tsx">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/frontend/app/globals.css">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Implemented FS-001 according to `ui-flow.md`.
+
+Added:
+
+- Ticket List landing screen at `/`.
+- Ticket Details route at `/tickets/[id]`.
+- Ticket list controls: search field, status filter, and create-ticket action shell.
+- Ticket summary row with identifier, title, status, priority, assignee, and updated time.
+- Ticket details layout with metadata and comments section.
+- Responsive shared styling for desktop and mobile.
+- No API integration, business logic, or unrelated workflows were added.
+
+Files changed:
+
+- `frontend/app/page.tsx`
+- [tickets/[id]/page.tsx](frontend/app/tickets/%5Bid%5D/page.tsx)
+- `frontend/app/globals.css`
+
+Validation completed successfully with `npm run build`. Routes generated:
+
+- `/`
+- `/tickets/[id]`
+
+---
+
+_**User (2026-09-20 09:28:32Z)**_
+
+Implement FS-001 make sure to follow the ui-flow.md and nothing unnecessary should be implemented.
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll inspect the existing frontend shell and the UI-flow requirements for FS-001, then add only the minimal route structure and app shell needed for Ticket List and Ticket Details.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_listDirectory"><details>
+<summary>Tool use: **copilot_listDirectory**</summary>
+
+Read `frontend`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findFiles"><details>
+<summary>Tool use: **copilot_findFiles**</summary>
+
+Searched for files matching `ticket-management` · `frontend/**/*`, 86 matches
+
+**Result:**
+
+```
+/home/kiran/Documents/ticket-management/frontend/package.json
+/home/kiran/Documents/ticket-management/frontend/package-lock.json
+/home/kiran/Documents/ticket-management/frontend/next-env.d.ts
+/home/kiran/Documents/ticket-management/frontend/.next/package.json
+/home/kiran/Documents/ticket-management/frontend/.next/BUILD_ID
+/home/kiran/Documents/ticket-management/frontend/.next/trace
+/home/kiran/Documents/ticket-management/frontend/.next/types/package.json
+/home/kiran/Documents/ticket-management/frontend/.next/types/app/page.ts
+/home/kiran/Documents/ticket-management/frontend/.next/types/app/layout.ts
+/home/kiran/Documents/ticket-management/frontend/.next/routes-manifest.json
+/home/kiran/Documents/ticket-management/frontend/.next/export-marker.json
+/home/kiran/Documents/ticket-management/frontend/.next/required-server-files.json
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/server-production/0.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/server-production/index.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/edge-server-production/0.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/edge-server-production/index.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/index.pack.old
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/0.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/2.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/1.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/webpack/client-production/index.pack
+/home/kiran/Documents/ticket-management/frontend/.next/cache/.tsbuildinfo
+/home/kiran/Documents/ticket-management/frontend/.next/images-manifest.json
+/home/kiran/Documents/ticket-management/frontend/.next/react-loadable-manifest.json
+/home/kiran/Documents/ticket-management/frontend/.n
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `ui-flow.md`, lines 1 to 180
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `package.json`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `page.tsx`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `layout.tsx`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `globals.css`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `ui-flow.md`, lines 180 to 250
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The current frontend is only a placeholder. FS-001 needs the list as the landing route and a details route, but not API calls, forms, search logic, or lifecycle behavior yet. I’ll build a presentational shell with the UI-flow’s list/detail structure and leave data actions for later tasks.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_applyPatch"><details>
+<summary>Tool use: **copilot_applyPatch**</summary>
+
+Apply Patch
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The typed client is added with shared ticket/comment contracts, query serialization, JSON request handling, and structured API error normalization. I’m running the frontend production build now to verify the new integration module type-checks cleanly with the existing app.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run build`
+</details></tool-use>
+
+---
+
+_**User (2026-09-20 09:33:32Z)**_
+
+Implement FS-002 in a simalr way
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll inspect FS-002’s acceptance criteria and the existing frontend shell, then add only a small typed fetch layer and UI-facing request types without duplicating backend business rules.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
+<summary>Tool use: **copilot_findTextInFiles**</summary>
+
+Searched for regex `FS-002|API integration|shared state|fetch layer|frontend` (`**/spec/architecture.md`), 14 results
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `implementation-plan.md`, lines 155 to 180
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findFiles"><details>
+<summary>Tool use: **copilot_findFiles**</summary>
+
+Searched for files matching `ticket-management` · `frontend/app/**/*`, 4 matches
+
+**Result:**
+
+```
+/home/kiran/Documents/ticket-management/frontend/app/globals.css
+/home/kiran/Documents/ticket-management/frontend/app/tickets/[id]/page.tsx
+/home/kiran/Documents/ticket-management/frontend/app/page.tsx
+/home/kiran/Documents/ticket-management/frontend/app/layout.tsx
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `api-contract.md`, lines 1 to 75
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `tsconfig.json`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+FS-002 is intentionally lightweight: a fetch layer aligned to the REST contract, with request/error handling kept in the UI and no frontend state-machine enforcement. I’m checking the architecture’s exact integration guidance before creating the client module and wiring only the list/detail reads.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `architecture.md`, lines 63 to 95
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `architecture.md`, lines 104 to 125
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `architecture.md`, lines 160 to 180
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `page.tsx`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `page.tsx`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+FS-002’s smallest useful implementation is a typed API client shared by the list/detail UI and future forms. I’ll add request/error normalization plus methods for the already-defined ticket endpoints; it will not encode state-machine rules or duplicate backend validation.
+
+_**Agent (copilot/auto)**_
+
 <tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
 <summary>Tool use: **copilot_createFile**</summary>
 
-Create File
+Created `api.ts`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **api.ts**</summary>
+
+@@ lines 1-1 @@
+
+```
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api';
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'CANCELLED';
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface Ticket {
+  id: number;
+  title: string;
+  description: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assignee: string | null;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+  cancelledAt: string | null;
+}
+
+export interface TicketListResponse {
+  items: Ticket[];
+  page: number;
+  size: number;
+  totalElements: number;
+}
+
+export interface Comment {
+  id: number;
+  ticketId: number;
+  content: string;
+  createdAt: string;
+  createdBy: string | null;
+}
+
+export interface TicketCreateRequest {
+  title: string;
+  description: string;
+  priority: TicketPriority;
+  assignee?: string;
+}
+
+export interface TicketUpdateRequest {
+  title?: string;
+  description?: string;
+  priority?: TicketPriority;
+  assignee?: string;
+}
+
+export interface ApiFieldError {
+  field: string;
+  message: string;
+}
+
+export interface ApiErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    details: ApiFieldError[];
+  };
+}
+
+export class ApiClientError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly details: ApiFieldError[];
+
+  constructor(status: number, response: ApiErrorResponse | undefined) {
+    super(response?.error.message ?? 'The request could not be completed.');
+    this.name = 'ApiClientError';
+    this.status = status;
+    this.code = response?.error.code ?? 'REQUEST_FAILED';
+    this.details = response?.error.details ?? [];
+  }
+}
+
+async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    let errorResponse: ApiErrorResponse | undefined;
+    try {
+      errorResponse = await response.json() as ApiErrorResponse;
+    } catch {
+      errorResponse = undefined;
+    }
+    throw new ApiClientError(response.status, errorResponse);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+function toQueryString(params: Record<string, string | number | undefined>): string {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+  const queryString = query.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
+export function listTickets(params: {
+  keyword?: string;
+  status?: TicketStatus;
+  page?: number;
+  size?: number;
+} = {}): Promise<TicketListResponse> {
+  return requestJson<TicketListResponse>(`/tickets${toQueryString(params)}`);
+}
+
+export function getTicket(id: number): Promise<Ticket> {
+  return requestJson<Ticket>(`/tickets/${id}`);
+}
+
+export function createTicket(request: TicketCreateRequest): Promise<Ticket> {
+  return requestJson<Ticket>('/tickets', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+export function updateTicket(id: number, request: TicketUpdateRequest): Promise<Ticket> {
+  return requestJson<Ticket>(`/tickets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(request),
+  });
+}
+
+export function updateTicketStatus(id: number, status: TicketStatus): Promise<Ticket> {
+  return requestJson<Ticket>(`/tickets/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function addComment(id: number, content: string): Promise<Comment> {
+  return requestJson<Comment>(`/tickets/${id}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
+```
 </details></tool-use>
