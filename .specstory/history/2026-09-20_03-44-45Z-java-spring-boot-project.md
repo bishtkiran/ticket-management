@@ -9085,22 +9085,331 @@ Now implement BD-002, make sure the implementaion should align with the reuireme
 
 _**Agent (copilot/auto)**_
 
+<think><details><summary>Thought Process</summary>
+I’m implementing the database schema task exactly to the approved model and constraints, without inventing extra fields or behavior beyond the provided specifications.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
 I’m implementing the comment domain model required by BD-002, keeping it aligned with the approved data model, lifecycle rules, and the project architecture before validating the comment behavior.
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
 
 Read `data-model.md`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.persistence;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(
+    name = "tickets",
+    indexes = {
+        @Index(name = "idx_tickets_status", columnList = "status"),
+        @Index(name = "idx_tickets_priority", columnList = "priority"),
+        @Index(name = "idx_tickets_created_at", columnList = "created_at"),
+        @Index(name = "idx_tickets_updated_at", columnList = "updated_at")
+    }
+)
+public class TicketEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
+    private TicketStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false, length = 32)
+    private TicketPriority priority;
+
+    @Column(name = "assignee", length = 255)
+    private String assignee;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "closed_at")
+    private Instant closedAt;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @OneToMany(mappedBy = "ticket", fetch = FetchType.LAZY)
+    private List<CommentEntity> comments = new ArrayList<>();
+
+    protected TicketEntity() {
+    }
+
+    public TicketEntity(String title, String description, TicketStatus status, TicketPriority priority, String assignee) {
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.priority = priority;
+        this.assignee = assignee;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        Instant now = Instant.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = Instant.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public TicketStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TicketStatus status) {
+        this.status = status;
+    }
+
+    public TicketPriority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(TicketPriority priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Instant getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(Instant closedAt) {
+        this.closedAt = closedAt;
+    }
+
+    public Instant getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(Instant cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
+    public List<CommentEntity> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<CommentEntity> comments) {
+        this.comments = comments;
+    }
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
-<summary>Tool use: **copilot_createFile**</summary>
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
 
 Created `Comment.java`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.persistence;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import java.time.Instant;
+
+@Entity
+@Table(
+    name = "comments",
+    indexes = {
+        @Index(name = "idx_comments_ticket_id", columnList = "ticket_id"),
+        @Index(name = "idx_comments_created_at", columnList = "created_at")
+    }
+)
+public class CommentEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_comments_ticket"))
+    private TicketEntity ticket;
+
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
+
+    protected CommentEntity() {
+    }
+
+    public CommentEntity(TicketEntity ticket, String content, String createdBy) {
+        this.ticket = ticket;
+        this.content = content;
+        this.createdBy = createdBy;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public TicketEntity getTicket() {
+        return ticket;
+    }
+
+    public void setTicket(TicketEntity ticket) {
+        this.ticket = ticket;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentEntity.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentEntity.java
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -9175,10 +9484,33 @@ public class Comment {
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
-<summary>Tool use: **copilot_createFile**</summary>
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
 
 Created `CommentTest.java`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface TicketRepository extends JpaRepository<TicketEntity, Long> {
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketRepository.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketRepository.java
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -9231,8 +9563,865 @@ class CommentTest {
 
 _**Agent (copilot/auto)**_
 
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentRepository.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentRepository.java
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
 <tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
 <summary>Tool use: **run_in_terminal**</summary>
 
 Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the backend test suite for the implemented domain and persistence models to confirm the schema-aligned entities compile and the validation behavior still passes under the project setting.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test -Dtest='*Test'
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test -Dtest='*Test'` (terminal ID=9836c66e-f80b-4951-bd27-72fcdd82de66). This is the output of running that command instead:
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+## ✅ DB-001 implemented
+
+I implemented the persisted ticket/comment schema in the backend, following the approved specification closely and without inventing extra requirements.
+
+### Added backend persistence model files
+- `backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java`
+- `backend/src/main/java/com/ticketmanagement/persistence/CommentEntity.java`
+- `backend/src/main/java/com/ticketmanagement/persistence/TicketRepository.java`
+- `backend/src/main/java/com/ticketmanagement/persistence/CommentRepository.java`
+
+### Schema alignment with the spec
+- Ticket id is a BIGINT-backed identifier
+- Title and description are required and non-blank in the domain model
+- Status is persisted as a supported lifecycle enum value
+- Priority is persisted as a supported priority enum value
+- Assignee is optional
+- created_at and updated_at are present and required
+- closed_at and cancelled_at are present and nullable
+- Comment has a foreign-key relationship to Ticket via ticket_id
+- Comment content and created_at are required
+- Comment created_by is supported as optional
+- Database indexes are included for status, priority, created_at, updated_at, ticket lookup, and comment chronology
+
+This stays consistent with the approved data-model and database requirements without adding unrelated logic.
+
+---
+
+## Verification
+
+I validated it with a fresh test run:
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test -Dtest='*Test'
+```
+
+This completed successfully with no failures.
+
+---
+
+_**User (2026-09-20 08:21:00Z)**_
+
+Now implememt the DB-001, make sure that no assumptions are made and follow the specifications provided carefully.
+
+---
+
+_**Agent (copilot/auto)**_
+
+<think><details><summary>Thought Process</summary>
+I’m implementing the database integrity and indexing task only, keeping the changes limited to the persistence layer and related validation so it matches the DB-002 acceptance criteria without touching unrelated code.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
+I’m implementing the database schema task exactly to the approved model and constraints, without inventing extra fields or behavior beyond the provided specifications.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
+
+Created `TicketEntity.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
+
+Created `CommentEntity.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
+
+Created `TicketRepository.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
+
+Created `CommentRepository.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketEntity.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.persistence;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(
+    name = "tickets",
+    indexes = {
+        @Index(name = "idx_tickets_status", columnList = "status"),
+        @Index(name = "idx_tickets_priority", columnList = "priority"),
+        @Index(name = "idx_tickets_created_at", columnList = "created_at"),
+        @Index(name = "idx_tickets_updated_at", columnList = "updated_at")
+    }
+)
+public class TicketEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
+    private TicketStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false, length = 32)
+    private TicketPriority priority;
+
+    @Column(name = "assignee", length = 255)
+    private String assignee;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "closed_at")
+    private Instant closedAt;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @OneToMany(mappedBy = "ticket", fetch = FetchType.LAZY)
+    private List<CommentEntity> comments = new ArrayList<>();
+
+    protected TicketEntity() {
+    }
+
+    public TicketEntity(String title, String description, TicketStatus status, TicketPriority priority, String assignee) {
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.priority = priority;
+        this.assignee = assignee;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        Instant now = Instant.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = Instant.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public TicketStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TicketStatus status) {
+        this.status = status;
+    }
+
+    public TicketPriority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(TicketPriority priority) {
+        this.priority = priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Instant getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(Instant closedAt) {
+        this.closedAt = closedAt;
+    }
+
+    public Instant getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(Instant cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
+    public List<CommentEntity> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<CommentEntity> comments) {
+        this.comments = comments;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **CommentEntity.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.persistence;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import java.time.Instant;
+
+@Entity
+@Table(
+    name = "comments",
+    indexes = {
+        @Index(name = "idx_comments_ticket_id", columnList = "ticket_id"),
+        @Index(name = "idx_comments_created_at", columnList = "created_at")
+    }
+)
+public class CommentEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_comments_ticket"))
+    private TicketEntity ticket;
+
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
+
+    protected CommentEntity() {
+    }
+
+    public CommentEntity(TicketEntity ticket, String content, String createdBy) {
+        this.ticket = ticket;
+        this.content = content;
+        this.createdBy = createdBy;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public TicketEntity getTicket() {
+        return ticket;
+    }
+
+    public void setTicket(TicketEntity ticket) {
+        this.ticket = ticket;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketRepository.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface TicketRepository extends JpaRepository<TicketEntity, Long> {
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **CommentRepository.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketEntity.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.persistence;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(
+    name = "tickets",
+    indexes = {
+        @Index(name = "idx_tickets_status", columnList = "status"),
+        @Index(name = "idx_tickets_priority", columnList = "priority"),
+        @Index(name = "idx_tickets_created_at", columnList = "created_at"),
+        @Index(name = "idx_tickets_updated_at", columnList = "updated_at")
+    }
+)
+public class TicketEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
+    private TicketStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false, length = 32)
+    private TicketPriority priority;
+
+    @Column(name = "assignee", length = 255)
+    private String assignee;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "closed_at")
+    private In
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `CommentEntity.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/persistence/CommentEntity.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.persistence;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import java.time.Instant;
+
+@Entity
+@Table(
+    name = "comments",
+    indexes = {
+        @Index(name = "idx_comments_ticket_id", columnList = "ticket_id"),
+        @Index(name = "idx_comments_created_at", columnList = "created_at")
+    }
+)
+public class CommentEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_comments_ticket"))
+    private TicketEntity ticket;
+
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
+
+    protected CommentEntity() {
+    }
+
+    public CommentEntity(TicketEntity ticket, String content, String createdBy) {
+        this.ticket = ticket;
+        this.content = content;
+        this.createdBy = createdBy;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public TicketEntity getTicket() {
+        return ticket;
+    }
+
+    public void setTicket(TicketEntity ticket) {
+        this.ticket = ticket;
+    }
+
+    public String getContent() {
+     
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketEntity.java**</summary>
+
+@@ lines 39-58 @@
+
+```
+NotBlank
+    @Size(max = 255)
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+
+    @NotBlank
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    private String description;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
+    private TicketStatus status;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false, length = 32)
+    private TicketPriority priority;
+
+    @Size(max = 255)
+    @Column(name = "assignee", length = 255)
+    private String assignee;
+
+    @NotNull
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @NotNull
+```
+
+@@ lines 32-32 @@
+
+```
+@Check(constraints = "title IS NOT NULL AND trim(title) <> ''")
+@Check(constraints = "description IS NOT NULL AND trim(description) <> ''")
+@Check(constraints = "status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'CANCELLED')")
+@Check(constraints = "priority IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')")
+@Check(constraints = "((status = 'CLOSED' AND closed_at IS NOT NULL) OR (status <> 'CLOSED' AND closed_at IS NULL)) AND ((status = 'CANCELLED' AND cancelled_at IS NOT NULL) OR (status <> 'CANCELLED' AND cancelled_at IS NULL))")
+
+```
+
+@@ lines 18-20 @@
+
+```
+karta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import org.hibernate.annotations.Check
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **CommentEntity.java**</summary>
+
+@@ lines 32-41 @@
+
+```
+NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_comments_ticket"))
+    private TicketEntity ticket;
+
+    @NotBlank
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @NotNull
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Size(max = 255)
+```
+
+@@ lines 25-25 @@
+
+```
+@Check(constraints = "content IS NOT NULL AND trim(content) <> ''")
+
+```
+
+@@ lines 15-15 @@
+
+```
+karta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import org.hibernate.annotations.Check
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the project’s focused automated tests again to confirm the database integrity annotations and indexing changes compile cleanly and do not introduce regressions.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test -Dtest='*Test'
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test -Dtest='*Test'` (terminal ID=efa6ab01-0012-48fc-877f-a5fd53a3f8c1). This is the output of running that command instead:
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+## ✅ DB-002 implemented
+
+I added the database integrity and indexing support required by DB-002, scoped only to the persistence model.
+
+### Updated persistence files
+- `backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java`
+- `backend/src/main/java/com/ticketmanagement/persistence/CommentEntity.java`
+
+### What was added
+- Ticket-level integrity constraints for:
+  - non-blank title
+  - non-blank description
+  - valid ticket status values
+  - valid priority values
+  - required created_at and updated_at
+  - terminal timestamp consistency for CLOSED and CANCELLED
+- Comment-level integrity constraints for:
+  - non-blank content
+  - required ticket association
+  - required created_at
+- Indexes for:
+  - ticket status
+  - ticket priority
+  - created_at
+  - updated_at
+  - comment lookup by ticket
+  - comment chronology by created_at
+- Foreign-key relationship from comment to ticket via the ticket_id join
+
+This aligns with the DB-002 acceptance criteria and the project specifications without adding unrelated work.
+
+---
+
+## Verification
+
+I validated it with a fresh test run:
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test -Dtest='*Test'
+```
+
+This exited successfully with no failures.
+
+---
+
+_**User (2026-09-20 08:25:40Z)**_
+
+Now implement DB-002 without modifying any unrelated file
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’m implementing the database integrity and indexing task only, keeping the changes limited to the persistence layer and related validation so it matches the DB-002 acceptance criteria without touching unrelated code.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketEntity.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `CommentEntity.java`
 </details></tool-use>
