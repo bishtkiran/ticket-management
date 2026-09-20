@@ -56,6 +56,22 @@ class TicketServiceImplTest {
         verify(ticketRepository).save(ticket);
     }
 
+    @Test
+    void inProgressTicketCanBeResolved() {
+        TicketEntity ticket = ticket(TicketStatus.IN_PROGRESS);
+        given(ticketRepository.findById(1L)).willReturn(Optional.of(ticket));
+        given(ticketRepository.save(ticket)).willReturn(ticket);
+
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("RESOLVED");
+
+        TicketResponse response = ticketService.updateTicketStatus(1L, request);
+
+        assertEquals(TicketStatus.RESOLVED, ticket.getStatus());
+        assertEquals("RESOLVED", response.getStatus());
+        verify(ticketRepository).save(ticket);
+    }
+
     private TicketEntity ticket(TicketStatus status) {
         TicketEntity ticket = new TicketEntity(
             "Login issue",
