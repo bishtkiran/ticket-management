@@ -59,6 +59,18 @@ class TicketRepositoryTest {
     }
 
     @Test
+    void searchesByKeywordAndStatusTogether() {
+        ticketRepository.saveAndFlush(ticket("Open login issue", "Users cannot sign in", TicketStatus.OPEN));
+        ticketRepository.saveAndFlush(ticket("Resolved login issue", "Already fixed", TicketStatus.RESOLVED));
+
+        List<TicketEntity> results = ticketRepository.searchByKeywordAndStatus("login", TicketStatus.OPEN);
+
+        assertEquals(1, results.size());
+        assertEquals(TicketStatus.OPEN, results.get(0).getStatus());
+        assertTrue(results.get(0).getTitle().contains("Open"));
+    }
+
+    @Test
     void persistsCommentWithParentTicket() {
         TicketEntity ticket = ticketRepository.saveAndFlush(
             ticket("Commented issue", "Needs investigation", TicketStatus.OPEN));

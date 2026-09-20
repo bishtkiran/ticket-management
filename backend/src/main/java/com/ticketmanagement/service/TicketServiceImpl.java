@@ -60,11 +60,7 @@ public class TicketServiceImpl implements TicketService {
             ? (normalizedKeyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(normalizedKeyword))
             : (normalizedKeyword == null
                 ? ticketRepository.findByStatus(normalizedStatus)
-                : ticketRepository.findAll().stream()
-                    .filter(ticket -> ticket.getStatus() == normalizedStatus)
-                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), normalizedKeyword)
-                        || containsIgnoreCase(ticket.getDescription(), normalizedKeyword))
-                    .collect(Collectors.toList()));
+                : ticketRepository.searchByKeywordAndStatus(normalizedKeyword, normalizedStatus));
 
         return tickets
             .stream()
@@ -168,10 +164,6 @@ public class TicketServiceImpl implements TicketService {
             .stream()
             .map(this::toCommentResponse)
             .collect(Collectors.toList());
-    }
-
-    private boolean containsIgnoreCase(String value, String keyword) {
-        return value != null && value.toLowerCase().contains(keyword.toLowerCase());
     }
 
     private CommentResponse toCommentResponse(CommentEntity entity) {

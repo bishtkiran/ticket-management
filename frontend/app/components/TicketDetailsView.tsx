@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ApiClientError, getTicket, listComments, Comment, Ticket } from '@/lib/api';
 import AddCommentForm from '@/app/components/AddCommentForm';
+import TicketStatusActions from '@/app/components/TicketStatusActions';
 
 function formatStatus(status: Ticket['status']): string {
   return status.replace('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
@@ -120,6 +121,10 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
                 <dd>{formatDate(ticket.updatedAt)}</dd>
               </div>
             </dl>
+          </section>
+
+          <section className="detail-card status-card" aria-label="Ticket status actions">
+            <TicketStatusActions ticket={ticket} onStatusChanged={setTicket} />
           </section>
 
           <section className="detail-card comments-placeholder" aria-labelledby="comments-heading">

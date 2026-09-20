@@ -13,6 +13,8 @@ const statuses: Array<{ value: TicketStatus | ''; label: string }> = [
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
+const supportedStatuses = new Set<TicketStatus>(statuses.filter((option) => option.value).map((option) => option.value as TicketStatus));
+
 function formatStatus(status: TicketStatus): string {
   return status.replace('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
 }
@@ -29,6 +31,7 @@ export default function TicketListView() {
   const [status, setStatus] = useState<TicketStatus | ''>('');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -73,6 +76,16 @@ export default function TicketListView() {
     setAppliedKeyword(keyword);
   }
 
+  function changeStatus(value: string) {
+    if (value === '' || supportedStatuses.has(value as TicketStatus)) {
+      setFilterError(null);
+      setStatus(value as TicketStatus | '');
+      return;
+    }
+    setFilterError('That status filter is not supported. Showing all statuses.');
+    setStatus('');
+  }
+
   return (
     <main className="app-shell">
       <header className="page-header">
@@ -92,18 +105,20 @@ export default function TicketListView() {
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder="Search tickets"
+            disabled={isLoading}
           />
         </label>
         <label className="filter-field">
           <span className="sr-only">Filter by status</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value as TicketStatus | '')}>
+          <select value={status} onChange={(event) => changeStatus(event.target.value)} disabled={isLoading}>
             {statuses.map((option) => (
               <option key={option.value || 'all'} value={option.value}>{option.label}</option>
             ))}
           </select>
         </label>
-        <button className="secondary-button" type="submit">Search</button>
+        <button className="secondary-button" type="submit" disabled={isLoading}>Search</button>
       </form>
+      {filterError && <p className="filter-error" role="alert">{filterError}</p>}
 
       <section className="ticket-panel" aria-labelledby="ticket-list-heading" aria-busy={isLoading}>
         <div className="panel-heading">
@@ -118,8 +133,8 @@ export default function TicketListView() {
         {!isLoading && errorMessage && <p className="state-panel error-state" role="alert">{errorMessage}</p>}
         {!isLoading && !errorMessage && tickets.length === 0 && (
           <div className="state-panel">
-            <strong>{appliedKeyword || status ? 'No tickets match your search' : 'No tickets found'}</strong>
-            <p>Create a ticket to get started.</p>
+            <strong>{appliedKeyword ? 'No tickets match your search' : status ? 'No tickets found for the selected status' : 'No tickets found'}</strong>
+            <p>{appliedKeyword || status ? 'Try another search or filter.' : 'Create a ticket to get started.'}</p>
           </div>
         )}
         {!isLoading && !errorMessage && tickets.length > 0 && (

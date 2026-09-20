@@ -353,6 +353,27 @@ dd {
   padding-top: 22px;
 }
 
+.status-card {
+  margin-top: 18px;
+}
+
+.status-actions {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 300px) auto;
+}
+
+.status-actions .field-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.status-terminal-note {
+  color: #718278;
+  margin: 0;
+}
+
 .comment-form .form-field textarea {
   min-height: 100px;
 }
@@ -468,6 +489,11 @@ dd {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-actions {
+    align-items: stretch;
     grid-template-columns: 1fr;
   }
 
