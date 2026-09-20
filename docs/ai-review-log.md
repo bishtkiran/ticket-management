@@ -641,6 +641,42 @@ Reason:
 
 * The AI should use the data defined in the specfication and should not assume anything.
 
+## Review 009 — REST API Implementation
+
+**Artifact reviewed:** `backend/java/api/TicketController.java`
+
+### Finding-001 — Data Validation not separated
+
+The controller itself was having the data validation logic.
+
+**Reason:** The implementation must follow the approved specs.
+
+**Correction:** Implement a separate service for data validation.
+
+### Finding-002 — Business logic in the controller
+
+Business rules were implemented directly in the controller.
+
+**Reason:** Controllers should handle HTTP concerns only; business logic belongs in the service/domain layer.
+
+**Correction:** Move business logic and state-transition validation to the service/domain layer.
+
+### Finding-003 — Exception handling in the controller
+
+Exception handling was implemented directly inside controller methods.
+
+**Reason:** Centralized handling is required for consistent API error responses.
+
+**Correction:** Move exception mapping to a centralized `@RestControllerAdvice`.
+
+### Finding-004 — DTOs in the controller
+
+DTOs were defined inside the controller file.
+
+**Reason:** API DTOs should remain separate from controllers for clear separation of responsibilities.
+
+**Correction:** Move request/response DTOs into a dedicated `api/dto` package.
+
 
 
 
