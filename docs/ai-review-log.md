@@ -321,3 +321,77 @@ invalid-transition behavior, while `api-contract.md` defines the HTTP
 status code and error response representation.
 
 
+## Review 005 — Architecture Specification
+
+**Artifact reviewed:** `spec/architecture.md`
+
+### Finding 1 — H2 and PostgreSQL were treated too similarly
+
+**AI suggestion**
+
+The architecture suggested using H2 for local execution and tests as a
+lightweight alternative to PostgreSQL.
+
+**Issue**
+
+H2 and PostgreSQL are not behaviorally identical databases. Tests that
+depend on database-specific SQL, constraints, types, or behavior may
+pass against H2 while failing against PostgreSQL.
+
+**Correction**
+
+The architecture was updated so PostgreSQL remains the primary runtime
+database. H2 may be used for compatible tests, while PostgreSQL-specific
+integration behavior must be tested against PostgreSQL.
+
+**Why this matters**
+
+The test environment should not create false confidence about production
+database behavior.
+
+
+### Finding 2 — Business-rule ownership was ambiguous
+
+**AI suggestion**
+
+The architecture assigned business rules to both the application/service
+layer and the domain layer.
+
+**Issue**
+
+This could lead to duplicated state-machine logic in multiple layers.
+
+**Correction**
+
+The domain model owns lifecycle invariants and state transitions. The
+application/service layer coordinates use cases, transactions, and
+persistence without duplicating the state-machine rules.
+
+**Why this matters**
+
+A business rule should have a clear owner so that different parts of
+the application cannot implement conflicting versions of the rule.
+
+
+### Finding 3 — State transition API responsibility was ambiguous
+
+**AI suggestion**
+
+The architecture stated that all status-changing API paths must enforce
+the state machine but did not define a single application-level use case
+for status changes.
+
+**Correction**
+
+Status changes are treated as a dedicated application use case, and all
+API paths capable of changing status must delegate to the same backend
+transition validation logic.
+
+**Why this matters**
+
+This prevents different endpoints from accidentally implementing
+different state-machine behavior.
+
+
+
+
