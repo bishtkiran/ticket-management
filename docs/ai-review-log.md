@@ -92,3 +92,177 @@ it becomes an approved requirement.
 
 Security rules concerning secrets, input validation, error leakage,
 and server-side business-rule enforcement remain applicable.
+
+
+## Review 003 — Requirements Specification Review
+
+**Artifact reviewed:** `spec/requirements.md`
+
+**Review stage:** Human review of AI-generated requirements specification
+
+### Finding 1 — Database technology was incorrectly treated as unspecified
+
+**AI suggestion**
+
+The specification stated that the exact database technology was not specified and could be chosen by the implementation team.
+
+**Issue**
+
+The original exercise explicitly requires PostgreSQL/H2.
+
+**Correction**
+
+The requirement was updated to explicitly require PostgreSQL as the primary persistent database and allow H2 for appropriate testing or lightweight local development.
+
+
+### Finding 2 — Initial ticket status was not explicitly defined
+
+**AI suggestion**
+
+The specification defined valid ticket transitions but did not explicitly state the initial status of a newly created ticket.
+
+**Issue**
+
+Without an explicit initial state, implementation could leave the status nullable or allow the client to choose an arbitrary initial status.
+
+**Correction**
+
+Added the business rule:
+
+`Every newly created ticket shall have status OPEN.`
+
+**Why this matters**
+
+The initial state is part of the state-machine contract and must be deterministic for both implementation and testing.
+
+
+
+### Finding 3 — State-machine requirements were not sufficiently explicit
+
+**AI suggestion**
+
+The specification initially described the lifecycle as needing to remain "coherent".
+
+**Issue**
+
+This was too vague to serve as an implementation and testing contract.
+
+**Correction**
+
+The requirements were changed to explicitly define the only valid transitions:
+
+* `OPEN → IN_PROGRESS`
+* `IN_PROGRESS → RESOLVED`
+* `RESOLVED → CLOSED`
+* `OPEN → CANCELLED`
+* `IN_PROGRESS → CANCELLED`
+
+The backend must reject every transition outside this set.
+
+**Why this matters**
+
+The state machine is a core business rule and must be precise enough to derive automated integration tests.
+
+
+### Finding 4 — Assignee requirement could introduce unrequested user management
+
+**AI suggestion**
+
+The specification stated that an assignee must correspond to a valid record in the application context.
+
+**Issue**
+
+The original exercise requires that an assignee can be changed, but it does not require authentication, user management, or a separate user-management subsystem.
+
+This wording could cause the implementation AI to introduce unnecessary user entities, authentication, and authorization infrastructure.
+
+**Correction**
+
+The requirement was changed so that an assignee may be assigned or unassigned, while the exact representation is defined by the approved data model and API contract.
+
+Full user management remains outside the current scope.
+
+**Why this matters**
+
+AI should not expand the project scope based on assumptions that are not supported by the requirements.
+
+
+### Finding 5 — Assignee workflow dependency was invented
+
+**AI suggestion**
+
+The specification stated that a ticket may be assigned or unassigned "depending on the workflow state".
+
+**Issue**
+
+The original requirements do not state that assignment depends on ticket status.
+
+**Correction**
+
+The workflow dependency was removed. A ticket may be assigned or unassigned unless a future approved requirement defines a status-specific assignment rule.
+
+**Why this matters**
+
+Business rules should be derived from approved requirements rather than inferred by the AI.
+
+
+### Finding 6 — Search and status-filter validation was too vague
+
+**AI suggestion**
+
+The specification required search terms and filter criteria to be validated but did not define what constituted valid input.
+
+**Issue**
+
+The implementation could make arbitrary decisions about blank searches or invalid status values.
+
+**Correction**
+
+The requirements were made more deterministic:
+
+* Search terms are trimmed before processing.
+* A blank search term is treated as no search filter.
+* Status filters accept only supported ticket status values.
+
+**Why this matters**
+
+Requirements should define observable behavior so that implementation and tests do not depend on arbitrary AI decisions.
+
+
+### Finding 7 — Persistence requirement did not explicitly cover application restart
+
+**AI suggestion**
+
+The specification initially required ticket data to remain available for subsequent retrieval but did not explicitly mention application restart.
+
+**Issue**
+
+The exercise explicitly requires that data survives an application restart.
+
+**Correction**
+
+The requirement was changed to explicitly require ticket and comment data to remain available after the application is stopped and restarted.
+
+**Why this matters**
+
+This converts an implicit persistence expectation into a testable acceptance criterion.
+
+
+
+### Finding 8 — Invalid state transitions needed explicit error semantics
+
+**AI suggestion**
+
+The specification initially described invalid transitions as validation errors.
+
+**Issue**
+
+An invalid status transition is a business-rule/resource-state conflict rather than merely malformed request data.
+
+**Correction**
+
+The requirements now define invalid status transitions as a distinct business-rule failure. The API contract will define the corresponding HTTP response consistently, using `409 Conflict` for an operation that conflicts with the ticket's current state.
+
+**Why this matters**
+
+Clear error semantics allow the API specification and integration tests to verify the behavior consistently.
