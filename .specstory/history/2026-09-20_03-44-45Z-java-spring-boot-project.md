@@ -5495,3 +5495,1058 @@ Give special attention to proving that invalid ticket state transitions are reje
 The initail state should be OPEN.
 
 Do not generate any code yet.
+
+---
+
+_**User (2026-09-20 07:38:05Z)**_
+
+Using the approved specifications in spec/, create an implementation plan.
+
+Break the work into small independently reviewable tasks.
+
+Group tasks into:
+1. Project setup
+2. Backend domain
+3. Database
+4. REST API
+5. Backend validation
+6. State machine
+7. Backend tests
+8. Frontend setup
+9. Ticket UI
+10. Comments UI
+11. Search/filter
+12. Frontend error handling
+13. Integration testing
+14. Documentation
+
+Each task must:
+- Have an ID
+- Have a clear objective
+- Reference relevant specification requirements
+- Have explicit acceptance criteria
+- Be small enough for one AI coding interaction
+
+Do not implement anything.
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’m building a granular implementation plan from the approved specs so each task is independently reviewable, small enough for one coding interaction, and tied back to the relevant requirements.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `requirements.md`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/spec/requirements.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Requirements Specification
+
+## 1. Project Objective
+
+The project objective is to build a Support Ticket Management System that enables users to create, view, search, filter, update, and manage support tickets throughout their lifecycle. The system must persist ticket data in a database, validate input on the backend, and provide clear error messages in the user interface.
+
+## 2. Actors
+
+- AA-001: Support user — a user who creates, views, searches, filters, and updates tickets.
+- AA-002: Assignee — a user assigned to a ticket who can receive updates and participate in ticket resolution.
+- AA-003: System — the application platform responsible for persistence, validation, business rules, and error handling.
+
+## 3. Functional Requirements
+
+- FR-001: The system shall allow a support user to create a new ticket.
+- FR-002: The system shall allow a support user to list all tickets.
+- FR-003: The system shall allow a support user to view the details of a specific ticket.
+- FR-004: The system shall allow a support user to update a ticket title.
+- FR-005: The system shall allow a support user to update a ticket description.
+- FR-006: The system shall allow a support user to update a ticket priority.
+- FR-007: The system shall allow a support user to update the assignee for a ticket.
+- FR-008: The system shall allow a support user to add comments to a ticket.
+- FR-009: The system shall allow a support user to search tickets by keyword.
+- FR-010: The system shall allow a support user to filter tickets by status.
+- FR-011: The system shall persist ticket data and ticket comments in a database.
+- FR-012: The system shall provide a user-visible way to view meaningful error messages when an operation fails or input is invalid.
+- FR-013: The system shall preserve persisted ticket and comment data across application restarts.
+- FR-014: The system shall enforce the following and only the following valid ticket status transitions:
+  - OPEN → IN_PROGRESS
+  - IN_PROGRESS → RESOLVED
+  - 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `api-contract.md`, lines 1 to 260
+
+**Input:**
+
+- endLine: `260`
+- filePath: `/home/kiran/Documents/ticket-management/spec/api-contract.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# API Contract Specification
+
+## 1. General API conventions
+
+- The API is REST-based and resource-oriented.
+- All endpoints use JSON for request and response bodies.
+- Request and response payloads must be consistent and predictable across controllers.
+- Client and server validation are both required: the frontend may provide convenience validation, but the backend is authoritative.
+- Validation failures and business-rule violations must return structured error responses.
+- The API must not expose internal implementation details, persistence structures, or raw database errors.
+- The API should remain simple and easy to consume, with a clear contract for resource creation, retrieval, update, filtering, and status changes.
+
+## 2. Common response shapes
+
+### 2.1 Success response
+
+A successful action should return:
+
+- HTTP status appropriate to the operation
+- JSON payload representing the created or updated resource, or a minimal success payload when no content is returned
+
+### 2.2 Error response
+
+A failing request should return a consistent JSON error payload, for example:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Ticket title is required.",
+    "details": [
+      {
+        "field": "title",
+        "message": "must not be blank"
+      }
+    ]
+  }
+}
+```
+
+The `error` object must contain:
+- `code`: machine-readable error code.
+- `message`: human-readable error message.
+- `details`: optional list of additional error details.
+
+Each item in `details` must contain:
+- `field`: the affected request field, when applicable.
+- `message`: human-readable explanation of the validation or business error.
+
+The API must not return stack traces, database exception details, internal class names, or other implementation-specific information.
+
+## 3. Ticket resource
+
+### 3.1 Ticket object shape
+
+A ticket resource should include the following fields:
+
+- `id`: unique ticket identifier
+- `title`: ticket title
+- `description`: ticket description
+- `status`: curren
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `state-machine.md`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/spec/state-machine.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Ticket State Machine
+
+## 1. States
+    
+
+The ticket lifecycle includes the following states:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+## 1.1 Initial state
+
+Every newly created ticket shall have the initial status:
+- OPEN
+The client shall not be required to provide an initial status when creating a ticket.
+
+## 1.2 Terminal states
+
+The following are terminal states:
+
+- CLOSED
+- CANCELLED
+
+A ticket in a terminal state cannot transition to any other state.
+
+## 2. Valid transitions
+
+The following transitions are valid:
+
+- OPEN -> IN_PROGRESS
+- IN_PROGRESS -> RESOLVED
+- RESOLVED -> CLOSED
+- OPEN -> CANCELLED
+- IN_PROGRESS -> CANCELLED
+
+The system must allow only these transitions. Every other transition is invalid.
+
+## 3. Invalid transition examples
+
+The backend must reject the following transitions:
+
+- CLOSED -> OPEN
+- RESOLVED -> OPEN
+- CANCELLED -> OPEN
+- OPEN -> RESOLVED
+- OPEN -> CLOSED
+- IN_PROGRESS -> OPEN
+- IN_PROGRESS -> CLOSED
+- RESOLVED -> IN_PROGRESS
+- RESOLVED -> CANCELLED
+- CLOSED -> IN_PROGRESS
+- CLOSED -> RESOLVED
+- CLOSED -> CANCELLED
+- CANCELLED -> IN_PROGRESS
+- CANCELLED -> RESOLVED
+- CANCELLED -> CLOSED
+- A ticket must not transition directly from OPEN to CLOSED.
+- A ticket must not transition directly from IN_PROGRESS to CLOSED.
+- CLOSED can only be reached from RESOLVED.
+
+Any transition not explicitly listed as valid must be rejected.
+
+## 4. Business rule summary
+
+- The normal lifecycle progresses forward from OPEN to IN_PROGRESS,then RESOLVED, then CLOSED.
+- Cancellation provides an alternative terminal path from OPEN or IN_PROGRESS.
+- Tickets may be cancelled only from OPEN or IN_PROGRESS.
+- Once a ticket reaches a terminal status such as CLOSED or CANCELLED, it must not transition back to an earlier state.
+- The backend is the source of truth for transition validation.
+- The frontend must not be trusted to enforce or determine valid transitions.
+
+## 5. Expected API behaviour
+
+- Any API endpoint that updates ticket status must valid
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `data-model.md`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/spec/data-model.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Data Model Specification
+
+## 1. Overview
+
+This document defines the persisted data model for the Support Ticket Management System. The model is intentionally small and pragmatic, designed to support ticket creation, listing, detail retrieval, status updates, search, filtering, comments, and persistence in a relational database.
+
+The data model covers the core business entities:
+
+- Ticket
+- Comment
+
+The design keeps the persistence model aligned with the application’s domain while remaining simple enough for a small application.
+
+## 2. Core design principles
+
+- Use a relational model with clear foreign-key relationships.
+- Keep each ticket as a primary record with associated comments as child records.
+- Preserve lifecycle and business-state information in the ticket record.
+- Enforce required data and referential integrity in the database.
+- Keep identifiers stable and predictable for API usage and persistence.
+- Prefer simple, explicit fields over highly abstract or generic models.
+
+## 3. Ticket entity
+
+### 3.1 Purpose
+
+The Ticket entity represents a support request or issue record. It stores the core information required to manage and track the lifecycle of a ticket.
+
+### 3.2 Fields
+
+| Field name | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT | Primary key, not null, unique | Stable identifier for the ticket |
+| title | VARCHAR(255) | Not null, not blank | A short summary of the issue |
+| description | TEXT | Not null, not blank | Full issue description |
+| status | VARCHAR(32) | Not null | Valid values include OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED |
+| priority | VARCHAR(32) | Not null | Valid values include CRITICAL, HIGH , MEDIUM and LOW|
+| assignee | VARCHAR(255) | Nullable | Optional assignee identifier or descriptive assignee name |
+| created_at | TIMESTAMP | Not null | Creation timestamp |
+| updated_at | TIMESTAMP | Not null | Last modification timestamp |
+| closed_at | TIMESTAMP | Nullable | Set only when the ticket reaches
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `architecture.md`, lines 1 to 220
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/spec/architecture.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Architecture Specification
+
+## 1. Overview
+
+This project is a small support ticket management system built with Java 21 and Spring Boot on the backend, a React/Next.js frontend, and PostgreSQL as the production database. The architecture is intentionally simple and pragmatic, with clear boundaries between the presentation layer, business logic, persistence, and external integration points.
+
+The design must remain appropriate to the size and complexity of the application. It should favor clarity and maintainability over unnecessary abstraction or framework-heavy patterns.
+
+## 2. Technology summary
+
+- Backend: Java 21, Spring Boot
+- Production database: PostgreSQL
+- Test/local lightweight database: H2
+- API: REST
+- Frontend: React/Next.js
+- Runtime model: a small, layered web application with clear service boundaries
+
+## 3. Backend architecture
+
+### 3.1 Layering
+
+The backend should follow a simple layered structure appropriate for a small application:
+
+- API/presentation layer
+  - Handles HTTP requests and responses
+  - Maps request payloads to application objects or DTOs
+  - Executes basic request validation and error translation
+  - Does not contain business rules
+
+- Application/service layer
+  - Contains use-case orchestration and business workflows
+  - Applies business rules and validation that are required by the application
+  - Coordinates persistence and domain behavior
+  - Owns transaction boundaries for write operations
+
+- Domain layer
+  - Holds core business concepts and rules when they add meaningful value
+  - Encapsulates state transitions and workflow logic
+  - Keeps business rules out of controllers and repositories
+  - May be lightweight for a small application, but must still protect invariants and valid state transitions
+
+- Persistence/infrastructure layer
+  - Manages database access, repositories, and technical integration concerns
+  - Isolates persistence technology from higher layers
+  - Exposes data access capabilities without leaking technical 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `implementation-plan.md`
+
+**Input:**
+
+- content:
+
+```
+# Implementation Plan
+
+## 1. Project setup
+
+### PS-001: Initialize backend and frontend project structure
+- Objective: Create the base project skeleton for the Java 21 Spring Boot backend and the React/Next.js frontend, with a simple workspace layout that supports the required backend/frontend split.
+- Relevant specs: requirements FR-001 to FR-016, architecture §2, §3, §4, §11; API contract §1.
+- Acceptance criteria:
+  - Backend and frontend folders are created in a clear, standard structure.
+  - Project metadata and configuration files are present for Java 21 Spring Boot and React/Next.js.
+  - The workspace separates backend, frontend, and shared specification folders.
+  - No application logic is implemented yet.
+
+### PS-002: Configure environment and database setup
+- Objective: Define base configuration for PostgreSQL in production and H2 for lightweight local/test usage, along with environment-variable handling for secrets and local settings.
+- Relevant specs: requirements NFR-001, NFR-003, NFR-007; architecture §5, §11; data-model §1-8.
+- Acceptance criteria:
+  - Separate configuration entries exist for local, test, and production settings.
+  - PostgreSQL is identified as the production database.
+  - H2 is available for lightweight local/test usage as appropriate.
+  - Secrets are not hard-coded into source-controlled configuration files.
+
+## 2. Backend domain
+
+### BD-001: Define domain concepts and ticket metadata model
+- Objective: Establish the core ticket concepts that match the approved specification: ticket identity, title, description, priority, status, assignee, and timestamps.
+- Relevant specs: requirements FR-001, FR-004 to FR-007, FR-011, BR-001, BR-002, BR-003, BR-013; data-model §3; architecture §3.1, §3.3.
+- Acceptance criteria:
+  - The core ticket concept is documented and aligned with the approved data model.
+  - Required ticket fields and lifecycle metadata are clearly defined.
+  - The domain model does not expose persistence implementation details.
+
+### BD-002: Define comment domain model and ownership
+- Objective: Define the comment concept and its relationship to a ticket.
+- Relevant specs: requirements FR-008, BR-004; data-model §4, §5; API contract §9.
+- Acceptance criteria:
+  - Comment ownership is defined as a child record of a ticket.
+  - Required fields and constraints are identified.
+  - The comment model is consistent with the API contract and persistence model.
+
+## 3. Database
+
+### DB-001: Define PostgreSQL schema for tickets and comments
+- Objective: Define the persisted structure for tickets and comments, including required fields, status values, timestamps, and foreign-key relationships.
+- Relevant specs: requirements FR-011, BR-001 to BR-004, BR-008, NFR-003; data-model §3-7.
+- Acceptance criteria:
+  - Ticket table includes required fields and constraints.
+  - Comment table includes required fields and constraints.
+  - Ticket-to-comment relationship is represented by a foreign key.
+  - Terminal timestamps and status storage are included as specified.
+
+### DB-002: Add indexing and integrity rules
+- Objective: Ensure database-level integrity and efficient retrieval for common queries such as listing, filtering by status, and comment lookup.
+- Relevant specs: data-model §3.5, §4.5, §6, §7.5; requirements FR-002, FR-010, FR-011, NFR-004.
+- Acceptance criteria:
+  - Indexes exist for status, created/update timestamps, and ticket-comment lookup.
+  - Database constraints enforce not-null, uniqueness, and check rules.
+  - The data model remains simple and consistent with the project scope.
+
+## 4. REST API
+
+### RA-001: Define ticket API resource contract for create/list/detail/update
+- Objective: Finalize the HTTP contract for creating tickets, listing tickets, and retrieving ticket details, including request and response bodies.
+- Relevant specs: API contract §4, §5, §6; requirements FR-001 to FR-003, FR-011, FR-012.
+- Acceptance criteria:
+  - HTTP method, URL, request body, and response contract are clear for create/list/detail operations.
+  - Validation and error cases are documented.
+  - All responses are consistent with the standard API contract.
+
+### RA-002: Define ticket update and status-change API contract
+- Objective: Define the update endpoint and state-change endpoint, including allowed transitions and expected status codes.
+- Relevant specs: API contract §7, §8; requirements FR-004 to FR-007, FR-014 to FR-016, BR-009 to BR-013, ER-008, ER-009; state-machine §2-6.
+- Acceptance criteria:
+  - Update endpoint contract is documented for title, description, priority, and assignee.
+  - Status endpoint contract is documented for valid lifecycle changes.
+  - Invalid transitions are mapped to the specified conflict/error behavior.
+
+### RA-003: Define comment and search/filter endpoints
+- Objective: Define endpoints for adding comments and for search/status-filter queries.
+- Relevant specs: API contract §9-11; requirements FR-008 to FR-010, FR-012, VR-005, VR-006; UI-flow §8, §9.
+- Acceptance criteria:
+  - Add-comment endpoint contract is documented.
+  - Search http contract is documented with keyword handling.
+  - Filter-by-status contract is documented with supported statuses and validation rules.
+
+## 5. Backend validation
+
+### BV-001: Define input validation rules for ticket creation and updates
+- Objective: Document and confirm the backend validation rules for required fields, priority, assignee, and request structure.
+- Relevant specs: requirements VR-001 to VR-003, VR-007; API contract §4, §7; architecture §7.
+- Acceptance criteria:
+  - Required ticket fields are clearly defined.
+  - Invalid priority and invalid assignee situations are defined.
+  - Validation rules are separated from controller logic and assigned to backend validation boundaries.
+
+### BV-002: Define validation rules for comments, search, and status filtering
+- Objective: Confirm backend rules for comments, blank search terms, and supported status filters.
+- Relevant specs: requirements VR-004 to VR-006, VR-008, VR-009; API contract §9-11; state-machine §3-6.
+- Acceptance criteria:
+  - Comment validation requirements are defined.
+  - Keyword search behavior for blank input is documented.
+  - Supported status values are documented and invalid status values are rejected.
+
+## 6. State machine
+
+### SM-001: Document the ticket lifecycle and allowed transitions
+- Objective: Confirm the complete lifecycle and the approved valid transitions used throughout the backend and UI.
+- Relevant specs: requirements FR-014 to FR-016, BR-009 to BR-013, AC-010 to AC-013; state-machine §1-8.
+- Acceptance criteria:
+  - All states are defined: OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED.
+  - Valid transitions are listed and explicit.
+  - Terminal states and invalid reversions are documented.
+
+### SM-002: Define backend state-machine enforcement contract
+- Objective: Make the backend responsibility for state validation explicit and consistent between all status-changing endpoints.
+- Relevant specs: requirements BR-011, BR-012, ER-008, ER-009; architecture §8; state-machine §5-6; API contract §8.
+- Acceptance criteria:
+  - Every status-changing API path references the same validation logic.
+  - Invalid transitions return the documented conflict response.
+  - No UI-only enforcement is relied upon.
+
+## 7. Backend tests
+
+### BT-001: Create backend unit-test plan for validation and business rules
+- Objective: Define focused unit tests for required validation, ticket fields, priority values, and default state behavior.
+- Relevant specs: requirements VR-001 to VR-009, BR-001 to BR-013, test-strategy §3.1, §5.
+- Acceptance criteria:
+  - Unit tests cover required ticket field validation.
+  - Unit tests cover invalid priority and invalid assignee conditions.
+  - Unit tests assert that new tickets initialize to OPEN.
+
+### BT-002: Create backend repository and API test plan for ticket persistence and HTTP behavior
+- Objective: Define repository tests for persistence and API tests for contract correctness, including invalid transition rejection.
+- Relevant specs: requirements FR-001 to FR-011, ER-001 to ER-009, AC-001 to AC-014; test-strategy §3.2, §3.3, §4, §5, §7, §8.
+- Acceptance criteria:
+  - Repository tests verify creation, retrieval, filtering, and comment persistence.
+  - API tests verify status and validation behavior for valid and invalid requests.
+  - Tests explicitly prove that invalid transitions are rejected by the backend without persisting changes.
+
+## 8. Frontend setup
+
+### FS-001: Set up frontend structure and app shell
+- Objective: Create the Next.js/React app shell and the initial layout for the ticket application.
+- Relevant specs: architecture §4, §11; requirements NFR-006, AC-009.
+- Acceptance criteria:
+  - App shell is created with a route structure sufficient for Ticket List and Ticket Details flows.
+  - Frontend structure is consistent with the application’s small-scale architecture.
+  - No business logic is embedded in the shell beyond basic UI orchestration.
+
+### FS-002: Configure frontend API integration and shared state patterns
+- Objective: Prepare the frontend for calling the backend API using a simple, maintainable pattern without introducing unnecessary abstraction.
+- Relevant specs: architecture §4.1, §4.2, §6, §9.2; API contract §1-15.
+- Acceptance criteria:
+  - A simple API client or fetch layer is planned.
+  - Shared state and request handling are limited to the UI layer.
+  - The frontend remains aligned with backend contracts and does not duplicate business rules.
+
+## 9. Ticket UI
+
+### TU-001: Build Ticket List screen
+- Objective: Create the main list screen containing search, status filtering, creation action, and ticket row summaries.
+- Relevant specs: UI-flow §2; requirements FR-002, FR-009, FR-010, AC-002, AC-005, AC-006.
+- Acceptance criteria:
+  - Ticket rows show the required summary fields.
+  - Search and status filter controls are present.
+  - Empty state and loading state are designed.
+  - User can navigate to create ticket or open a ticket detail.
+
+### TU-002: Build create-ticket and detail views
+- Objective: Implement the screen flow for creating a ticket and displaying ticket details.
+- Relevant specs: UI-flow §3, §4; requirements FR-001, FR-003, FR-012, AC-001, AC-007; API contract §4, §6.
+- Acceptance criteria:
+  - Create form includes required fields and validation states.
+  - Ticket detail view shows title, description, status, priority, assignee, and metadata.
+  - Not-found and API error states are handled clearly.
+
+### TU-003: Build edit ticket flow
+- Objective: Implement the ability for a user to edit ticket fields from the ticket detail view.
+- Relevant specs: UI-flow §5; requirements FR-004 to FR-007, AC-003.
+- Acceptance criteria:
+  - Editing form loads existing values.
+  - Validation errors are shown inline.
+  - Save action updates the ticket and returns to details view.
+  - API failures are surfaced clearly to the user.
+
+## 10. Comments UI
+
+### CU-001: Build comment display and list behavior
+- Objective: Render comments in the ticket detail flow and show the relevant comment history clearly.
+- Relevant specs: UI-flow §4, §7; requirements FR-008, AC-004; API contract §9.
+- Acceptance criteria:
+  - Comments appear in chronological order.
+  - Empty comment state is handled cleanly if no comments exist.
+  - Comment history remains visible on the detail screen.
+
+### CU-002: Build add-comment form and submission flow
+- Objective: Implement the add-comment interaction and validation flow.
+- Relevant specs: UI-flow §7; requirements FR-008, VR-004, ER-003; API contract §9.
+- Acceptance criteria:
+  - User can add a comment to an existing ticket.
+  - Empty comment input is blocked with validation feedback.
+  - API failure is handled gracefully without losing the existing form state.
+
+## 11. Search/filter
+
+### SF-001: Implement search and filter UI behavior
+- Objective: Add the search box and status filter logic that matches the approved API contract and project requirements.
+- Relevant specs: requirements FR-009, FR-010, VR-005, VR-006; UI-flow §8, §9; API contract §5, §10, §11.
+- Acceptance criteria:
+  - Search input calls the backend with a valid keyword.
+  - Blank search is treated consistently.
+  - Status filter only accepts supported values.
+  - Empty result state is handled clearly.
+
+### SF-002: Connect search/filter to backend queries
+- Objective: Ensure the frontend requests the correct data for both keyword search and status filtering, with consistent server-side validation.
+- Relevant specs: requirements FR-009, FR-010, BR-005, BR-006, NFR-004; API contract §5, §10, §11.
+- Acceptance criteria:
+  - Search and filter requests match the backend contract.
+  - Query errors are surfaced properly.
+  - Filtered lists reflect the backend’s actual result set.
+
+## 12. Frontend error handling
+
+### FE-001: Implement validation feedback for forms and filters
+- Objective: Add clear user-facing validation for required fields, invalid status, and invalid search/filter input.
+- Relevant specs: requirements NFR-002, VR-001 to VR-006, ER-005; UI-flow §3.4, §5.3, §6.6, §8.4, §9.5; API contract §2.2, §8.8, §10.5, §11.5.
+- Acceptance criteria:
+  - Validation messages appear inline or in a clear user-visible format.
+  - Invalid input does not silently continue to a failed API request.
+  - The UX remains consistent for create/edit/comment/status flows.
+
+### FE-002: Implement error handling for API and not-found states
+- Objective: Ensure frontend error states are consistent and understandable for failed loads, unavailable tickets, and server-side errors.
+- Relevant specs: requirements ER-001, ER-005, ER-008; UI-flow §4.5, §5.6, §6.6, §7.6, §12; architecture §9.2.
+- Acceptance criteria:
+  - Not-found ticket flow displays a clear message.
+  - API request failure states are shown to the user.
+  - Users can recover without refreshing the app.
+
+## 13. Integration testing
+
+### IT-001: Verify the supported ticket lifecycle end to end
+- Objective: Validate the happy-path lifecycle through the system: create, update, change status, and review ticket details.
+- Relevant specs: requirements AC-001, AC-003, AC-004, AC-010, AC-011; state-machine §2-7; test-strategy §3.4, §4, §8.
+- Acceptance criteria:
+  - Ticket creation works end to end.
+  - Lifecycle transitions from OPEN to IN_PROGRESS to RESOLVED to CLOSED are valid.
+  - OPEN to CANCELLED and IN_PROGRESS to CANCELLED are valid.
+  - The app reflects the new state in the UI and API responses.
+
+### IT-002: Verify invalid transitions are rejected by the backend
+- Objective: Prove that invalid ticket transitions are rejected by the backend and do not persist changes.
+- Relevant specs: requirements FR-015, FR-016, BR-011, BR-012, VR-008, VR-009, ER-008, ER-009, AC-012; state-machine §3-6; test-strategy §4.2, §4.3, §4.4.
+- Acceptance criteria:
+  - Every prohibited transition is rejected by the backend.
+  - Invalid transitions return the documented conflict status.
+  - Ticket status remains unchanged after failed transition attempts.
+  - The frontend displays a user-friendly business-rule error without bypassing backend validation.
+
+## 14. Documentation
+
+### DOC-001: Update project documentation with setup and workflow guidance
+- Objective: Ensure the project documentation reflects the approved requirements, architecture, API contract, state machine, and operational setup.
+- Relevant specs: requirements NFR-005, NFR-006; architecture §11; API contract §14; state-machine §8; test-strategy §12.
+- Acceptance criteria:
+  - README or setup docs explain the local environment and database choices.
+  - The ticket lifecycle and API conventions are described.
+  - A developer can understand how to run the project and test key flows.
+
+### DOC-002: Finalize specification review and handoff checklist
+- Objective: Confirm that the spec set is internally consistent and ready for implementation review.
+- Relevant specs: all approved spec documents under spec/.
+- Acceptance criteria:
+  - Architecture, requirements, API contract, data model, UI flow, state machine, and test strategy agree on the service lifecycle.
+  - No conflicting requirements remain for ticket status rules or backend enforcement.
+  - The work is ready for implementation handoff without requiring additional design interpretation.
+
+## 15. Suggested execution order
+
+1. Project setup
+2. Backend domain
+3. Database
+4. REST API
+5. Backend validation
+6. State machine
+7. Backend tests
+8. Frontend setup
+9. Ticket UI
+10. Comments UI
+11. Search/filter
+12. Frontend error handling
+13. Integration testing
+14. Documentation
+
+This ordering keeps the most critical backend rules—especially the state machine and validation—earlier in the process while leaving UI and documentation work after the API contract is stable.
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/spec/implementation-plan.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/spec/implementation-plan.md
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **implementation-plan.md**</summary>
+
+@@ lines 1-1 @@
+
+```
+# Implementation Plan
+
+## 1. Project setup
+
+### PS-001: Initialize backend and frontend project structure
+- Objective: Create the base project skeleton for the Java 21 Spring Boot backend and the React/Next.js frontend, with a simple workspace layout that supports the required backend/frontend split.
+- Relevant specs: requirements FR-001 to FR-016, architecture §2, §3, §4, §11; API contract §1.
+- Acceptance criteria:
+  - Backend and frontend folders are created in a clear, standard structure.
+  - Project metadata and configuration files are present for Java 21 Spring Boot and React/Next.js.
+  - The workspace separates backend, frontend, and shared specification folders.
+  - No application logic is implemented yet.
+
+### PS-002: Configure environment and database setup
+- Objective: Define base configuration for PostgreSQL in production and H2 for lightweight local/test usage, along with environment-variable handling for secrets and local settings.
+- Relevant specs: requirements NFR-001, NFR-003, NFR-007; architecture §5, §11; data-model §1-8.
+- Acceptance criteria:
+  - Separate configuration entries exist for local, test, and production settings.
+  - PostgreSQL is identified as the production database.
+  - H2 is available for lightweight local/test usage as appropriate.
+  - Secrets are not hard-coded into source-controlled configuration files.
+
+## 2. Backend domain
+
+### BD-001: Define domain concepts and ticket metadata model
+- Objective: Establish the core ticket concepts that match the approved specification: ticket identity, title, description, priority, status, assignee, and timestamps.
+- Relevant specs: requirements FR-001, FR-004 to FR-007, FR-011, BR-001, BR-002, BR-003, BR-013; data-model §3; architecture §3.1, §3.3.
+- Acceptance criteria:
+  - The core ticket concept is documented and aligned with the approved data model.
+  - Required ticket fields and lifecycle metadata are clearly defined.
+  - The domain model does not expose persistence implementation details.
+
+### BD-002: Define comment domain model and ownership
+- Objective: Define the comment concept and its relationship to a ticket.
+- Relevant specs: requirements FR-008, BR-004; data-model §4, §5; API contract §9.
+- Acceptance criteria:
+  - Comment ownership is defined as a child record of a ticket.
+  - Required fields and constraints are identified.
+  - The comment model is consistent with the API contract and persistence model.
+
+## 3. Database
+
+### DB-001: Define PostgreSQL schema for tickets and comments
+- Objective: Define the persisted structure for tickets and comments, including required fields, status values, timestamps, and foreign-key relationships.
+- Relevant specs: requirements FR-011, BR-001 to BR-004, BR-008, NFR-003; data-model §3-7.
+- Acceptance criteria:
+  - Ticket table includes required fields and constraints.
+  - Comment table includes required fields and constraints.
+  - Ticket-to-comment relationship is represented by a foreign key.
+  - Terminal timestamps and status storage are included as specified.
+
+### DB-002: Add indexing and integrity rules
+- Objective: Ensure database-level integrity and efficient retrieval for common queries such as listing, filtering by status, and comment lookup.
+- Relevant specs: data-model §3.5, §4.5, §6, §7.5; requirements FR-002, FR-010, FR-011, NFR-004.
+- Acceptance criteria:
+  - Indexes exist for status, created/update timestamps, and ticket-comment lookup.
+  - Database constraints enforce not-null, uniqueness, and check rules.
+  - The data model remains simple and consistent with the project scope.
+
+## 4. REST API
+
+### RA-001: Define ticket API resource contract for create/list/detail/update
+- Objective: Finalize the HTTP contract for creating tickets, listing tickets, and retrieving ticket details, including request and response bodies.
+- Relevant specs: API contract §4, §5, §6; requirements FR-001 to FR-003, FR-011, FR-012.
+- Acceptance criteria:
+  - HTTP method, URL, request body, and response contract are clear for create/list/detail operations.
+  - Validation and error cases are documented.
+  - All responses are consistent with the standard API contract.
+
+### RA-002: Define ticket update and status-change API contract
+- Objective: Define the update endpoint and state-change endpoint, including allowed transitions and expected status codes.
+- Relevant specs: API contract §7, §8; requirements FR-004 to FR-007, FR-014 to FR-016, BR-009 to BR-013, ER-008, ER-009; state-machine §2-6.
+- Acceptance criteria:
+  - Update endpoint contract is documented for title, description, priority, and assignee.
+  - Status endpoint contract is documented for valid lifecycle changes.
+  - Invalid transitions are mapped to the specified conflict/error behavior.
+
+### RA-003: Define comment and search/filter endpoints
+- Objective: Define endpoints for adding comments and for search/status-filter queries.
+- Relevant specs: API contract §9-11; requirements FR-008 to FR-010, FR-012, VR-005, VR-006; UI-flow §8, §9.
+- Acceptance criteria:
+  - Add-comment endpoint contract is documented.
+  - Search http contract is documented with keyword handling.
+  - Filter-by-status contract is documented with supported statuses and validation rules.
+
+## 5. Backend validation
+
+### BV-001: Define input validation rules for ticket creation and updates
+- Objective: Document and confirm the backend validation rules for required fields, priority, assignee, and request structure.
+- Relevant specs: requirements VR-001 to VR-003, VR-007; API contract §4, §7; architecture §7.
+- Acceptance criteria:
+  - Required ticket fields are clearly defined.
+  - Invalid priority and invalid assignee situations are defined.
+  - Validation rules are separated from controller logic and assigned to backend validation boundaries.
+
+### BV-002: Define validation rules for comments, search, and status filtering
+- Objective: Confirm backend rules for comments, blank search terms, and supported status filters.
+- Relevant specs: requirements VR-004 to VR-006, VR-008, VR-009; API contract §9-11; state-machine §3-6.
+- Acceptance criteria:
+  - Comment validation requirements are defined.
+  - Keyword search behavior for blank input is documented.
+  - Supported status values are documented and invalid status values are rejected.
+
+## 6. State machine
+
+### SM-001: Document the ticket lifecycle and allowed transitions
+- Objective: Confirm the complete lifecycle and the approved valid transitions used throughout the backend and UI.
+- Relevant specs: requirements FR-014 to FR-016, BR-009 to BR-013, AC-010 to AC-013; state-machine §1-8.
+- Acceptance criteria:
+  - All states are defined: OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED.
+  - Valid transitions are listed and explicit.
+  - Terminal states and invalid reversions are documented.
+
+### SM-002: Define backend state-machine enforcement contract
+- Objective: Make the backend responsibility for state validation explicit and consistent between all status-changing endpoints.
+- Relevant specs: requirements BR-011, BR-012, ER-008, ER-009; architecture §8; state-machine §5-6; API contract §8.
+- Acceptance criteria:
+  - Every status-changing API path references the same validation logic.
+  - Invalid transitions return the documented conflict response.
+  - No UI-only enforcement is relied upon.
+
+## 7. Backend tests
+
+### BT-001: Create backend unit-test plan for validation and business rules
+- Objective: Define focused unit tests for required validation, ticket fields, priority values, and default state behavior.
+- Relevant specs: requirements VR-001 to VR-009, BR-001 to BR-013, test-strategy §3.1, §5.
+- Acceptance criteria:
+  - Unit tests cover required ticket field validation.
+  - Unit tests cover invalid priority and invalid assignee conditions.
+  - Unit tests assert that new tickets initialize to OPEN.
+
+### BT-002: Create backend repository and API test plan for ticket persistence and HTTP behavior
+- Objective: Define repository tests for persistence and API tests for contract correctness, including invalid transition rejection.
+- Relevant specs: requirements FR-001 to FR-011, ER-001 to ER-009, AC-001 to AC-014; test-strategy §3.2, §3.3, §4, §5, §7, §8.
+- Acceptance criteria:
+  - Repository tests verify creation, retrieval, filtering, and comment persistence.
+  - API tests verify status and validation behavior for valid and invalid requests.
+  - Tests explicitly prove that invalid transitions are rejected by the backend without persisting changes.
+
+## 8. Frontend setup
+
+### FS-001: Set up frontend structure and app shell
+- Objective: Create the Next.js/React app shell and the initial layout for the ticket application.
+- Relevant specs: architecture §4, §11; requirements NFR-006, AC-009.
+- Acceptance criteria:
+  - App shell is created with a route structure sufficient for Ticket List and Ticket Details flows.
+  - Frontend structure is consistent with the application’s small-scale architecture.
+  - No business logic is embedded in the shell beyond basic UI orchestration.
+
+### FS-002: Configure frontend API integration and shared state patterns
+- Objective: Prepare the frontend for calling the backend API using a simple, maintainable pattern without introducing unnecessary abstraction.
+- Relevant specs: architecture §4.1, §4.2, §6, §9.2; API contract §1-15.
+- Acceptance criteria:
+  - A simple API client or fetch layer is planned.
+  - Shared state and request handling are limited to the UI layer.
+  - The frontend remains aligned with backend contracts and does not duplicate business rules.
+
+## 9. Ticket UI
+
+### TU-001: Build Ticket List screen
+- Objective: Create the main list screen containing search, status filtering, creation action, and ticket row summaries.
+- Relevant specs: UI-flow §2; requirements FR-002, FR-009, FR-010, AC-002, AC-005, AC-006.
+- Acceptance criteria:
+  - Ticket rows show the required summary fields.
+  - Search and status filter controls are present.
+  - Empty state and loading state are designed.
+  - User can navigate to create ticket or open a ticket detail.
+
+### TU-002: Build create-ticket and detail views
+- Objective: Implement the screen flow for creating a ticket and displaying ticket details.
+- Relevant specs: UI-flow §3, §4; requirements FR-001, FR-003, FR-012, AC-001, AC-007; API contract §4, §6.
+- Acceptance criteria:
+  - Create form includes required fields and validation states.
+  - Ticket detail view shows title, description, status, priority, assignee, and metadata.
+  - Not-found and API error states are handled clearly.
+
+### TU-003: Build edit ticket flow
+- Objective: Implement the ability for a user to edit ticket fields from the ticket detail view.
+- Relevant specs: UI-flow §5; requirements FR-004 to FR-007, AC-003.
+- Acceptance criteria:
+  - Editing form loads existing values.
+  - Validation errors are shown inline.
+  - Save action updates the ticket and returns to details view.
+  - API failures are surfaced clearly to the user.
+
+## 10. Comments UI
+
+### CU-001: Build comment display and list behavior
+- Objective: Render comments in the ticket detail flow and show the relevant comment history clearly.
+- Relevant specs: UI-flow §4, §7; requirements FR-008, AC-004; API contract §9.
+- Acceptance criteria:
+  - Comments appear in chronological order.
+  - Empty comment state is handled cleanly if no comments exist.
+  - Comment history remains visible on the detail screen.
+
+### CU-002: Build add-comment form and submission flow
+- Objective: Implement the add-comment interaction and validation flow.
+- Relevant specs: UI-flow §7; requirements FR-008, VR-004, ER-003; API contract §9.
+- Acceptance criteria:
+  - User can add a comment to an existing ticket.
+  - Empty comment input is blocked with validation feedback.
+  - API failure is handled gracefully without losing the existing form state.
+
+## 11. Search/filter
+
+### SF-001: Implement search and filter UI behavior
+- Objective: Add the search box and status filter logic that matches the approved API contract and project requirements.
+- Relevant specs: requirements FR-009, FR-010, VR-005, VR-006; UI-flow §8, §9; API contract §5, §10, §11.
+- Acceptance criteria:
+  - Search input calls the backend with a valid keyword.
+  - Blank search is treated consistently.
+  - Status filter only accepts supported values.
+  - Empty result state is handled clearly.
+
+### SF-002: Connect search/filter to backend queries
+- Objective: Ensure the frontend requests the correct data for both keyword search and status filtering, with consistent server-side validation.
+- Relevant specs: requirements FR-009, FR-010, BR-005, BR-006, NFR-004; API contract §5, §10, §11.
+- Acceptance criteria:
+  - Search and filter requests match the backend contract.
+  - Query errors are surfaced properly.
+  - Filtered lists reflect the backend’s actual result set.
+
+## 12. Frontend error handling
+
+### FE-001: Implement validation feedback for forms and filters
+- Objective: Add clear user-facing validation for required fields, invalid status, and invalid search/filter input.
+- Relevant specs: requirements NFR-002, VR-001 to VR-006, ER-005; UI-flow §3.4, §5.3, §6.6, §8.4, §9.5; API contract §2.2, §8.8, §10.5, §11.5.
+- Acceptance criteria:
+  - Validation messages appear inline or in a clear user-visible format.
+  - Invalid input does not silently continue to a failed API request.
+  - The UX remains consistent for create/edit/comment/status flows.
+
+### FE-002: Implement error handling for API and not-found states
+- Objective: Ensure frontend error states are consistent and understandable for failed loads, unavailable tickets, and server-side errors.
+- Relevant specs: requirements ER-001, ER-005, ER-008; UI-flow §4.5, §5.6, §6.6, §7.6, §12; architecture §9.2.
+- Acceptance criteria:
+  - Not-found ticket flow displays a clear message.
+  - API request failure states are shown to the user.
+  - Users can recover without refreshing the app.
+
+## 13. Integration testing
+
+### IT-001: Verify the supported ticket lifecycle end to end
+- Objective: Validate the happy-path lifecycle through the system: create, update, change status, and review ticket details.
+- Relevant specs: requirements AC-001, AC-003, AC-004, AC-010, AC-011; state-machine §2-7; test-strategy §3.4, §4, §8.
+- Acceptance criteria:
+  - Ticket creation works end to end.
+  - Lifecycle transitions from OPEN to IN_PROGRESS to RESOLVED to CLOSED are valid.
+  - OPEN to CANCELLED and IN_PROGRESS to CANCELLED are valid.
+  - The app reflects the new state in the UI and API responses.
+
+### IT-002: Verify invalid transitions are rejected by the backend
+- Objective: Prove that invalid ticket transitions are rejected by the backend and do not persist changes.
+- Relevant specs: requirements FR-015, FR-016, BR-011, BR-012, VR-008, VR-009, ER-008, ER-009, AC-012; state-machine §3-6; test-strategy §4.2, §4.3, §4.4.
+- Acceptance criteria:
+  - Every prohibited transition is rejected by the backend.
+  - Invalid transitions return the documented conflict status.
+  - Ticket status remains unchanged after failed transition attempts.
+  - The frontend displays a user-friendly business-rule error without bypassing backend validation.
+
+## 14. Documentation
+
+### DOC-001: Update project documentation with setup and workflow guidance
+- Objective: Ensure the project documentation reflects the approved requirements, architecture, API contract, state machine, and operational setup.
+- Relevant specs: requirements NFR-005, NFR-006; architecture §11; API contract §14; state-machine §8; test-strategy §12.
+- Acceptance criteria:
+  - README or setup docs explain the local environment and database choices.
+  - The ticket lifecycle and API conventions are described.
+  - A developer can understand how to run the project and test key flows.
+
+### DOC-002: Finalize specification review and handoff checklist
+- Objective: Confirm that the spec set is internally consistent and ready for implementation review.
+- Relevant specs: all approved spec documents under spec/.
+- Acceptance criteria:
+  - Architecture, requirements, API contract, data model, UI flow, state machine, and test strategy agree on the service lifecycle.
+  - No conflicting requirements remain for ticket status rules or backend enforcement.
+  - The work is ready for implementation handoff without requiring additional design interpretation.
+
+## 15. Suggested execution order
+
+1. Project setup
+2. Backend domain
+3. Database
+4. REST API
+5. Backend validation
+6. State machine
+7. Backend tests
+8. Frontend setup
+9. Ticket UI
+10. Comments UI
+11. Search/filter
+12. Frontend error handling
+13. Integration testing
+14. Documentation
+
+This ordering keeps the most critical backend rules—especially the state machine and validation—earlier in the process while leaving UI and documentation work after the API contract is stable.
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+## ✅ Implementation plan created
+
+I created the implementation plan in `spec/implementation-plan.md`.
+
+It is grouped into the requested sections:
+
+1. Project setup
+2. Backend domain
+3. Database
+4. REST API
+5. Backend validation
+6. State machine
+7. Backend tests
+8. Frontend setup
+9. Ticket UI
+10. Comments UI
+11. Search/filter
+12. Frontend error handling
+13. Integration testing
+14. Documentation
+
+Each task includes:
+- ID
+- objective
+- relevant specification references
+- explicit acceptance criteria
+- a size suitable for a single AI coding interaction
+
+No implementation code was added.
