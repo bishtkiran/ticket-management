@@ -3,24 +3,13 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiClientError, createTicket, TicketPriority } from '@/lib/api';
-
-const priorities: TicketPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-
-type FormErrors = Partial<Record<'title' | 'description' | 'priority' | 'assignee', string>>;
-
-function validateText(value: string, fieldName: string, maxLength?: number): string | undefined {
-  const normalized = value.trim();
-  if (!normalized) {
-    return `${fieldName} is required.`;
-  }
-  if (!/[A-Za-z]/.test(normalized)) {
-    return `${fieldName} must contain meaningful text.`;
-  }
-  if (maxLength && normalized.length > maxLength) {
-    return `${fieldName} must not exceed ${maxLength} characters.`;
-  }
-  return undefined;
-}
+import {
+  ticketPriorities,
+  TicketFormErrors,
+  TicketFormField,
+  validateTicketField,
+  validateTicketForm,
+} from '@/lib/validation';
 
 export default function CreateTicketForm() {
   const router = useRouter();
@@ -28,34 +17,16 @@ export default function CreateTicketForm() {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TicketPriority>('MEDIUM');
   const [assignee, setAssignee] = useState('');
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [errors, setErrors] = useState<TicketFormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function validate(): FormErrors {
-    const nextErrors: FormErrors = {};
-    const titleError = validateText(title, 'Title', 255);
-    const descriptionError = validateText(description, 'Description');
-    const assigneeError = assignee.trim() && assignee.trim().length > 255
-      ? 'Assignee must not exceed 255 characters.'
-      : undefined;
-    if (titleError) nextErrors.title = titleError;
-    if (descriptionError) nextErrors.description = descriptionError;
-    if (!priority) {
-      nextErrors.priority = 'Priority is required.';
-    }
-    if (assigneeError) nextErrors.assignee = assigneeError;
-    return nextErrors;
+  function validate(): TicketFormErrors {
+    return validateTicketForm({ title, description, priority, assignee });
   }
 
-  function validateField(field: keyof FormErrors, value: string) {
-    const nextError = field === 'title'
-      ? validateText(value, 'Title', 255)
-      : field === 'description'
-        ? validateText(value, 'Description')
-        : field === 'assignee' && value.trim().length > 255
-          ? 'Assignee must not exceed 255 characters.'
-          : undefined;
+  function validateField(field: TicketFormField, value: string) {
+    const nextError = validateTicketField(field, value);
     setErrors((current) => ({ ...current, [field]: nextError }));
   }
 
@@ -80,10 +51,10 @@ export default function CreateTicketForm() {
       router.refresh();
     } catch (error: unknown) {
       if (error instanceof ApiClientError) {
-        const fieldErrors: FormErrors = {};
+        const fieldErrors: TicketFormErrors = {};
         error.details.forEach((detail) => {
-          if (detail.field in fieldErrors || ['title', 'description', 'priority', 'assignee'].includes(detail.field)) {
-            fieldErrors[detail.field as keyof FormErrors] = detail.message;
+          if (['title', 'description', 'priority', 'assignee'].includes(detail.field)) {
+            fieldErrors[detail.field as TicketFormField] = detail.message;
           }
         });
         setErrors(fieldErrors);
@@ -115,8 +86,15 @@ export default function CreateTicketForm() {
       <div className="form-grid">
         <label className="form-field">
           <span>Priority</span>
-          <select value={priority} onChange={(event) => setPriority(event.target.value as TicketPriority)} aria-invalid={Boolean(errors.priority)}>
-            {priorities.map((option) => <option key={option} value={option}>{option}</option>)}
+          <select
+            value={priority}
+            onChange={(event) => {
+              setPriority(event.target.value as TicketPriority);
+              validateField('priority', event.target.value);
+            }}
+            aria-invalid={Boolean(errors.priority)}
+          >
+            {ticketPriorities.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
           {errors.priority && <small className="field-error">{errors.priority}</small>}
         </label>

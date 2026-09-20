@@ -188,6 +188,25 @@ input, select {
   color: #9c3f2c;
 }
 
+.error-state p:last-of-type {
+  margin-bottom: 16px;
+}
+
+.retry-button {
+  display: inline-flex;
+  justify-content: center;
+  min-height: 40px;
+  padding: 10px 16px;
+}
+
+.inline-error-state {
+  padding: 8px 0 18px;
+}
+
+.inline-error-state .empty-copy {
+  margin-bottom: 12px;
+}
+
 .ticket-row {
   align-items: center;
   display: grid;

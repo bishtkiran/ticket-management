@@ -3,17 +3,20 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { ApiClientError, listTickets, Ticket, TicketStatus } from '@/lib/api';
+import {
+  isSupportedStatus,
+  normalizeSearchKeyword,
+  ticketStatuses,
+  validateStatusFilter,
+} from '@/lib/validation';
 
 const statuses: Array<{ value: TicketStatus | ''; label: string }> = [
   { value: '', label: 'All statuses' },
-  { value: 'OPEN', label: 'Open' },
-  { value: 'IN_PROGRESS', label: 'In progress' },
-  { value: 'RESOLVED', label: 'Resolved' },
-  { value: 'CLOSED', label: 'Closed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
+  ...ticketStatuses.map((status) => ({
+    value: status,
+    label: status.replace('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase()),
+  })),
 ];
-
-const supportedStatuses = new Set<TicketStatus>(statuses.filter((option) => option.value).map((option) => option.value as TicketStatus));
 
 function formatStatus(status: TicketStatus): string {
   return status.replace('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
@@ -32,6 +35,7 @@ export default function TicketListView() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
+  const [retryVersion, setRetryVersion] = useState(0);
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -69,20 +73,21 @@ export default function TicketListView() {
     return () => {
       isCurrentRequest = false;
     };
-  }, [appliedKeyword, status]);
+  }, [appliedKeyword, status, retryVersion]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setAppliedKeyword(keyword);
+    setAppliedKeyword(normalizeSearchKeyword(keyword));
   }
 
   function changeStatus(value: string) {
-    if (value === '' || supportedStatuses.has(value as TicketStatus)) {
+    const validationError = validateStatusFilter(value);
+    if (!validationError && (value === '' || isSupportedStatus(value))) {
       setFilterError(null);
-      setStatus(value as TicketStatus | '');
+      setStatus(value);
       return;
     }
-    setFilterError('That status filter is not supported. Showing all statuses.');
+    setFilterError(validationError ?? 'Please select a valid status.');
     setStatus('');
   }
 
@@ -110,7 +115,13 @@ export default function TicketListView() {
         </label>
         <label className="filter-field">
           <span className="sr-only">Filter by status</span>
-          <select value={status} onChange={(event) => changeStatus(event.target.value)} disabled={isLoading}>
+          <select
+            value={status}
+            onChange={(event) => changeStatus(event.target.value)}
+            disabled={isLoading}
+            aria-invalid={Boolean(filterError)}
+            aria-describedby={filterError ? 'status-filter-error' : undefined}
+          >
             {statuses.map((option) => (
               <option key={option.value || 'all'} value={option.value}>{option.label}</option>
             ))}
@@ -118,7 +129,7 @@ export default function TicketListView() {
         </label>
         <button className="secondary-button" type="submit" disabled={isLoading}>Search</button>
       </form>
-      {filterError && <p className="filter-error" role="alert">{filterError}</p>}
+      {filterError && <p className="filter-error" id="status-filter-error" role="alert">{filterError}</p>}
 
       <section className="ticket-panel" aria-labelledby="ticket-list-heading" aria-busy={isLoading}>
         <div className="panel-heading">
@@ -130,7 +141,14 @@ export default function TicketListView() {
         </div>
 
         {isLoading && <p className="state-panel">Loading tickets...</p>}
-        {!isLoading && errorMessage && <p className="state-panel error-state" role="alert">{errorMessage}</p>}
+        {!isLoading && errorMessage && (
+          <div className="state-panel error-state" role="alert">
+            <p>{errorMessage}</p>
+            <button className="secondary-button retry-button" type="button" onClick={() => setRetryVersion((current) => current + 1)}>
+              Retry
+            </button>
+          </div>
+        )}
         {!isLoading && !errorMessage && tickets.length === 0 && (
           <div className="state-panel">
             <strong>{appliedKeyword ? 'No tickets match your search' : status ? 'No tickets found for the selected status' : 'No tickets found'}</strong>

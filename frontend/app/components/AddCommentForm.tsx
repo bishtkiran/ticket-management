@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { addComment, ApiClientError, Comment } from '@/lib/api';
+import { validateComment } from '@/lib/validation';
 
 type AddCommentFormProps = {
   ticketId: number;
@@ -16,8 +17,9 @@ export default function AddCommentForm({ ticketId, onCommentAdded }: AddCommentF
   function submitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedContent = content.trim();
-    if (!normalizedContent) {
-      setErrorMessage('Comment content is required.');
+    const validationError = validateComment(content);
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
 
@@ -29,9 +31,10 @@ export default function AddCommentForm({ ticketId, onCommentAdded }: AddCommentF
         setContent('');
       })
       .catch((error: unknown) => {
-        setErrorMessage(error instanceof ApiClientError
-          ? 'Unable to add comment. Please try again.'
-          : 'Unable to add comment. Please try again.');
+        const contentError = error instanceof ApiClientError
+          ? error.details.find((detail) => detail.field === 'content')
+          : undefined;
+        setErrorMessage(contentError?.message ?? 'Unable to add comment. Please try again.');
       })
       .finally(() => setIsSubmitting(false));
   }
@@ -46,12 +49,14 @@ export default function AddCommentForm({ ticketId, onCommentAdded }: AddCommentF
             setContent(event.target.value);
             if (errorMessage) setErrorMessage(null);
           }}
+          onBlur={() => setErrorMessage(validateComment(content) ?? null)}
           rows={4}
           placeholder="Write an update for the support team"
           aria-invalid={Boolean(errorMessage)}
+          aria-describedby={errorMessage ? 'comment-error' : undefined}
         />
       </label>
-      {errorMessage && <small className="field-error" role="alert">{errorMessage}</small>}
+      {errorMessage && <small className="field-error" id="comment-error" role="alert">{errorMessage}</small>}
       <div className="form-actions comment-actions">
         <button className="primary-button" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Adding comment...' : 'Add comment'}

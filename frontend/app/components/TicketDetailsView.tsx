@@ -24,11 +24,22 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
   const [areCommentsLoading, setAreCommentsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [isNotFound, setIsNotFound] = useState(false);
+  const [retryVersion, setRetryVersion] = useState(0);
 
   useEffect(() => {
+    if (!Number.isInteger(ticketId) || ticketId <= 0) {
+      setIsLoading(false);
+      setAreCommentsLoading(false);
+      setIsNotFound(true);
+      setErrorMessage('Ticket not found.');
+      return;
+    }
+
     let isCurrentRequest = true;
     setIsLoading(true);
     setErrorMessage(null);
+    setIsNotFound(false);
     setAreCommentsLoading(true);
     setCommentsError(null);
 
@@ -42,9 +53,9 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
         if (!isCurrentRequest) {
           return;
         }
-        setErrorMessage(error instanceof ApiClientError && error.status === 404
-          ? 'Ticket not found.'
-          : 'Unable to load this ticket. Please try again.');
+        const notFound = error instanceof ApiClientError && error.status === 404;
+        setIsNotFound(notFound);
+        setErrorMessage(notFound ? 'Ticket not found.' : 'Unable to load this ticket. Please try again.');
       })
       .finally(() => {
         if (isCurrentRequest) {
@@ -72,7 +83,7 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
     return () => {
       isCurrentRequest = false;
     };
-  }, [ticketId]);
+  }, [ticketId, retryVersion]);
 
   return (
     <main className="app-shell detail-shell">
@@ -80,7 +91,14 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
 
       {isLoading && <p className="state-panel detail-state">Loading ticket...</p>}
       {!isLoading && errorMessage && (
-        <p className="state-panel error-state detail-state" role="alert">{errorMessage}</p>
+        <div className="state-panel error-state detail-state" role="alert">
+          <p>{errorMessage}</p>
+          {!isNotFound && (
+            <button className="secondary-button retry-button" type="button" onClick={() => setRetryVersion((current) => current + 1)}>
+              Retry
+            </button>
+          )}
+        </div>
       )}
       {!isLoading && !errorMessage && ticket && (
         <>
@@ -136,7 +154,14 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
               <span className="count-label">{areCommentsLoading ? 'Loading' : `${comments.length} comment${comments.length === 1 ? '' : 's'}`}</span>
             </div>
             {areCommentsLoading && <p className="empty-copy">Loading comments...</p>}
-            {!areCommentsLoading && commentsError && <p className="empty-copy error-state" role="alert">{commentsError}</p>}
+            {!areCommentsLoading && commentsError && (
+              <div className="inline-error-state" role="alert">
+                <p className="empty-copy error-state">{commentsError}</p>
+                <button className="secondary-button retry-button" type="button" onClick={() => setRetryVersion((current) => current + 1)}>
+                  Retry comments
+                </button>
+              </div>
+            )}
             {!areCommentsLoading && !commentsError && comments.length === 0 && (
               <p className="empty-copy">No comments yet.</p>
             )}
