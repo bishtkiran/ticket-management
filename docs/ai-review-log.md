@@ -393,5 +393,63 @@ This prevents different endpoints from accidentally implementing
 different state-machine behavior.
 
 
+## Review 006 — Data Model Specification
+
+**Artifact reviewed:** `spec/data-model.md`
+
+### Finding-001 — Ambiguous identifier type
+The specification defined the ticket and comment ID as `BIGINT or UUID`.
+
+This is an implementation decision that should not remain ambiguous before coding.
+
+Decision:
+- Use `BIGINT` for ticket and comment primary keys.
+
+Reason:
+- The application is small.
+- Sequential numeric identifiers are sufficient.
+- UUID does not provide a demonstrated benefit for this exercise.
+
+### Finding-002 — Ambiguous assignee representation
+The specification allowed either `VARCHAR(255)` or `BIGINT`.
+
+Decision:
+- Use a simple `VARCHAR(255)` assignee identifier/name for the MVP because the requirements do not require a separate User entity.
+
+### Finding-003 — Priority values were not defined
+The specification referenced a "supported priority set" without defining the values.
+
+Decision:
+- Define the supported priority enum explicitly before implementation:
+  - LOW
+  - MEDIUM
+  - HIGH
+  - CRITICAL
+
+### Finding-004 — State-machine enforcement clarification
+The specification discussed database constraints for status but did not clearly distinguish valid status values from valid state transitions.
+
+Correction:
+- Database constraints may restrict status to:
+  OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED.
+- Backend/domain/service logic must enforce allowed transitions.
+- Integration tests must verify invalid transitions are rejected and not persisted.
+
+### Finding-005 — Initial status was not explicit
+The specification did not explicitly define the status of a newly created ticket.
+
+Decision:
+- New tickets must start in `OPEN`.
+
+
+### Finding-006 — Ticket deletion was not required
+The specification introduced alternative deletion behavior even though ticket deletion is not part of the requirements.
+
+Decision:
+- Do not implement ticket deletion.
+
+
+
+
 
 

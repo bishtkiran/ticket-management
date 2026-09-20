@@ -2463,249 +2463,10 @@ I’m drafting the architecture spec for the small full-stack app, keeping the s
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="write" data-tool-name="create_file"><details>
-<summary>Tool use: **create_file**</summary>
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
 
 Created `architecture.md`
-
-**Input:**
-
-- content:
-
-```
-# Architecture Specification
-
-## 1. Overview
-
-This project is a small support ticket management system built with Java 21 and Spring Boot on the backend, a React/Next.js frontend, and PostgreSQL as the production database. The architecture is intentionally simple and pragmatic, with clear boundaries between the presentation layer, business logic, persistence, and external integration points.
-
-The design must remain appropriate to the size and complexity of the application. It should favor clarity and maintainability over unnecessary abstraction or framework-heavy patterns.
-
-## 2. Technology summary
-
-- Backend: Java 21, Spring Boot
-- Production database: PostgreSQL
-- Test/local lightweight database: H2
-- API: REST
-- Frontend: React/Next.js
-- Runtime model: a small, layered web application with clear service boundaries
-
-## 3. Backend architecture
-
-### 3.1 Layering
-
-The backend should follow a simple layered structure appropriate for a small application:
-
-- API/presentation layer
-  - Handles HTTP requests and responses
-  - Maps request payloads to application objects or DTOs
-  - Executes basic request validation and error translation
-  - Does not contain business rules
-
-- Application/service layer
-  - Contains use-case orchestration and business workflows
-  - Applies business rules and validation that are required by the application
-  - Coordinates persistence and domain behavior
-  - Owns transaction boundaries for write operations
-
-- Domain layer
-  - Holds core business concepts and rules when they add meaningful value
-  - Encapsulates state transitions and workflow logic
-  - Keeps business rules out of controllers and repositories
-  - May be lightweight for a small application, but must still protect invariants and valid state transitions
-
-- Persistence/infrastructure layer
-  - Manages database access, repositories, and technical integration concerns
-  - Isolates persistence technology from higher layers
-  - Exposes data access capabilities without leaking technical details into the business layer
-
-### 3.2 Backend responsibilities
-
-- Expose REST endpoints for ticket operations
-- Validate incoming requests
-- Enforce business rules and state transitions
-- Coordinate persistence and transactional writes
-- Return consistent success and error responses
-- Keep controllers thin and focused on HTTP concerns
-
-## 4. Frontend architecture
-
-The frontend should be intentionally lightweight and focused on user experience and interaction with the backend API.
-
-### 4.1 Frontend responsibilities
-
-- Render ticket-related pages and forms
-- Collect user input and submit requests to the backend
-- Display ticket lists, detail views, and status-aware UI states
-- Show meaningful validation and failure messages to users
-- Provide a user-friendly interface for ticket lifecycle actions
-
-### 4.2 Frontend constraints
-
-- The frontend must not be treated as the source of truth for business rules.
-- The frontend may provide UI guidance and convenience checks, but the backend is authoritative for validation and workflow enforcement.
-- The frontend should not duplicate complex business logic or state-machine rules that belong to the backend.
-- Frontend behavior should remain simple and aligned with the API contract.
-
-## 5. Database boundary
-
-### 5.1 Production database
-
-- PostgreSQL is the production database.
-- It is used for persistent application data and transactional consistency.
-- The database should maintain the canonical state of ticket records and related data.
-
-### 5.2 Test/local database
-
-- H2 may be used for lightweight local execution and test environments where appropriate.
-- H2 should be used to support quick local validation and isolated testing without requiring the full PostgreSQL runtime.
-- Production logic should remain database-agnostic at the application layer, with PostgreSQL as the intended production datastore.
-
-### 5.3 Persistence boundaries
-
-- Persistence concerns belong in the repository/infrastructure layer.
-- Application logic should not depend on database implementation details.
-- JPA entities may be used for persistence models when appropriate, but they should not be exposed directly as API contracts.
-
-## 6. API boundary
-
-The application exposes a REST API that is the contract between frontend and backend.
-
-### 6.1 API responsibilities
-
-- Define resource-oriented endpoints for ticket operations
-- Use standard HTTP methods and semantics
-- Return consistent success and error payloads
-- Validate input at the API boundary
-- Translate backend exceptions into clear HTTP responses
-
-### 6.2 API constraints
-
-- The API contract must remain separate from persistence entities and internal domain models.
-- Controllers should not contain business logic.
-- API responses should avoid leaking internal implementation details.
-- DTOs should represent the public contract, not persistence structure.
-
-## 7. Validation boundary
-
-Validation should occur at clear boundaries:
-
-- API boundary: validate incoming request structure, required fields, and obvious format errors
-- Service/application layer: validate business rules and workflow constraints
-- Persistence/database layer: enforce data integrity constraints when needed
-
-The backend must enforce all meaningful validation rules. The frontend may help with UX, but it is not the authoritative validation layer.
-
-## 8. State-machine responsibility
-
-The ticket state machine is a core business rule and must be enforced by the backend.
-
-### 8.1 Required lifecycle
-
-- OPEN -> IN_PROGRESS
-- IN_PROGRESS -> RESOLVED
-- RESOLVED -> CLOSED
-- OPEN -> CANCELLED
-- IN_PROGRESS -> CANCELLED
-
-### 8.2 Enforcement requirement
-
-- The backend is the source of truth for valid ticket transitions.
-- The frontend must not determine whether a transition is valid.
-- All API paths that can change ticket status must use the same transition validation logic.
-- Invalid transitions must be rejected before persistence.
-
-### 8.3 Terminal states
-
-- CLOSED and CANCELLED are terminal states in the defined state machine.
-- A ticket in a terminal state must not transition back to an earlier state.
-
-## 9. Error handling
-
-Errors should be handled in a consistent, predictable way across the application.
-
-### 9.1 Backend error handling
-
-- Translate validation failures, domain violations, and persistence failures into clear API responses.
-- Return meaningful error messages without exposing internal system details.
-- Use consistent HTTP status codes for similar failures.
-- Keep exception handling centralized at the HTTP boundary where practical.
-
-### 9.2 Frontend error handling
-
-- Render meaningful user-facing errors based on API responses.
-- Display validation feedback and failure messages without exposing internal technical details.
-- Keep error rendering simple and user-friendly.
-
-## 10. Testing architecture
-
-The testing strategy should remain lean and practical for a small application.
-
-### 10.1 Test layers
-
-- Unit tests
-  - Validate focused business logic and validation behavior
-  - Keep tests fast and isolated
-
-- Integration tests
-  - Validate interactions across key application components and persistence
-  - Use controlled data and environment setup
-
-- API tests
-  - Validate HTTP contracts, status codes, payloads, and error responses
-
-- Repository/persistence tests
-  - Verify query behavior and persistence semantics where needed
-
-### 10.2 Rules
-
-- Tests should validate real behavior rather than mock internals.
-- Use mocks only where external dependencies or constraints require them.
-- Avoid brittle or over-engineered test patterns.
-- Keep the test suite maintainable and fast enough for normal development feedback.
-
-## 11. Configuration and environment strategy
-
-### 11.1 Environment separation
-
-- Use environment-specific configuration for application settings.
-- Keep local development, testing, and production configuration clearly separated.
-- Use environment variables or external configuration for secrets and sensitive values.
-
-### 11.2 Database configuration
-
-- PostgreSQL for production and any shared or full deployment environment.
-- H2 for local execution and lightweight tests when appropriate.
-- Avoid hard-coding credentials or sensitive configuration values in source-controlled files.
-
-### 11.3 Operational configuration
-
-- Keep configuration explicit and readable.
-- Prefer standard Spring Boot conventions over custom configuration patterns.
-- Keep the environment setup simple and suitable for a small application.
-
-## 12. Design principles for a small application
-
-- Favor a simple layered architecture over speculative abstraction.
-- Add a dedicated domain layer only when it meaningfully improves the understanding or enforcement of business rules.
-- Avoid creating layers or abstractions solely to satisfy a pattern.
-- Prefer clear responsibilities and straightforward code over generic frameworks.
-- Keep the system easy to understand, test, and evolve.
-
-## 13. Scope note
-
-This architecture is intended for a small support ticket management system. It balances clarity, maintainability, and project size without introducing unnecessary complexity or heavy enterprise patterns.
-
-```
-
-- filePath: `/home/kiran/Documents/ticket-management/spec/architecture.md`
-
-**Result:**
-
-```
-The following files were successfully edited:
-/home/kiran/Documents/ticket-management/spec/architecture.md
-```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -2960,3 +2721,491 @@ It covers:
 - configuration/environment strategy
 
 The design stays appropriate for a small Java 21 + Spring Boot application and avoids unnecessary abstraction or overengineering.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `data-model.md`
+
+**Input:**
+
+- content:
+
+```
+# Data Model Specification
+
+## 1. Overview
+
+This document defines the persisted data model for the Support Ticket Management System. The model is intentionally small and pragmatic, designed to support ticket creation, listing, detail retrieval, status updates, search, filtering, comments, and persistence in a relational database.
+
+The data model covers the core business entities:
+
+- Ticket
+- Comment
+
+The design keeps the persistence model aligned with the application’s domain while remaining simple enough for a small application.
+
+## 2. Core design principles
+
+- Use a relational model with clear foreign-key relationships.
+- Keep each ticket as a primary record with associated comments as child records.
+- Preserve lifecycle and business-state information in the ticket record.
+- Enforce required data and referential integrity in the database.
+- Keep identifiers stable and predictable for API usage and persistence.
+- Prefer simple, explicit fields over highly abstract or generic models.
+
+## 3. Ticket entity
+
+### 3.1 Purpose
+
+The Ticket entity represents a support request or issue record. It stores the core information required to manage and track the lifecycle of a ticket.
+
+### 3.2 Fields
+
+| Field name | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT or UUID | Primary key, not null, unique | Stable identifier for the ticket |
+| title | VARCHAR(255) | Not null, not blank | A short summary of the issue |
+| description | TEXT | Not null, not blank | Full issue description |
+| status | VARCHAR(32) | Not null | Valid values include OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED |
+| priority | VARCHAR(32) | Not null | Valid values should reflect the supported priority set |
+| assignee | VARCHAR(255) or BIGINT | Nullable | Optional assignee identifier or descriptive assignee name |
+| created_at | TIMESTAMP | Not null | Creation timestamp |
+| updated_at | TIMESTAMP | Not null | Last modification timestamp |
+| closed_at | TIMESTAMP | Nullable | Set only when the ticket reaches a terminal state such as CLOSED |
+| cancelled_at | TIMESTAMP | Nullable | Set only when the ticket is cancelled |
+
+### 3.3 Constraints
+
+- `id` must be unique and not null.
+- `title` must not be null and must contain meaningful non-whitespace content.
+- `description` must not be null and must contain meaningful non-whitespace content.
+- `status` must be one of the supported lifecycle values.
+- `priority` must be one of the supported priority values.
+- `created_at` must be set on creation and must not be null.
+- `updated_at` must be set on creation and updated on each modification.
+- `closed_at` and `cancelled_at` must be null unless the ticket reaches the corresponding terminal state.
+- A ticket must not have conflicting terminal time fields for incompatible states.
+
+### 3.4 Status and lifecycle rules
+
+The system must enforce the following valid lifecycle states:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+Allowed transitions:
+
+- OPEN -> IN_PROGRESS
+- IN_PROGRESS -> RESOLVED
+- RESOLVED -> CLOSED
+- OPEN -> CANCELLED
+- IN_PROGRESS -> CANCELLED
+
+All other transitions are invalid and must be rejected by the backend.
+
+### 3.5 Indexes
+
+- Index on `status` to support filtering by ticket status.
+- Index on `priority` if priority-based queries or reporting are expected.
+- Index on `created_at` for listing and sorting by newest or oldest tickets.
+- Index on `updated_at` for activity-based retrieval and sorting.
+- Optional full-text or trigram index on `title` and `description` for keyword search, if the application needs more advanced text search.
+
+### 3.6 Design decisions
+
+- `status` is stored as a string or enum-backed value because the lifecycle is explicit and simple to validate.
+- `assignee` is intentionally flexible in this specification to allow either a direct user identifier or a textual representation, depending on implementation choice.
+- `created_at` and `updated_at` provide auditing and sorting support.
+- `closed_at` and `cancelled_at` capture when a ticket reached a terminal state, which helps with reporting and state clarity.
+
+## 4. Comment entity
+
+### 4.1 Purpose
+
+The Comment entity represents a user-supplied comment associated with a specific ticket. Comments add context, updates, and history to the ticket.
+
+### 4.2 Fields
+
+| Field name | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT or UUID | Primary key, not null, unique | Stable identifier for the comment |
+| ticket_id | BIGINT or UUID | Foreign key, not null | Reference to owning ticket |
+| content | TEXT | Not null, not blank | Comment body |
+| created_at | TIMESTAMP | Not null | Timestamp when the comment was created |
+| created_by | VARCHAR(255) or BIGINT | Nullable | User or actor that created the comment |
+
+### 4.3 Constraints
+
+- `id` must be unique and not null.
+- `ticket_id` must reference a valid ticket record.
+- `content` must not be null and must contain meaningful non-whitespace text.
+- `created_at` must be set on creation and must not be null.
+- A comment must be attached to exactly one ticket.
+
+### 4.4 Relationships
+
+- A Ticket has many Comments.
+- Each Comment belongs to exactly one Ticket.
+
+### 4.5 Indexes
+
+- Index on `ticket_id` to support retrieving comments for a specific ticket efficiently.
+- Index on `created_at` to support chronological sorting of comments.
+
+### 4.6 Design decisions
+
+- Comments are treated as child records of the parent ticket.
+- This keeps the model simple and allows efficient retrieval of ticket history.
+- `created_by` is optional in this specification because the implementation may use a simplified user model or may omit user attribution if not required by the application.
+
+## 5. Relationships
+
+### 5.1 Ticket -> Comment
+
+- One-to-many relationship.
+- Each ticket can have zero or many comments.
+- Each comment belongs to exactly one ticket.
+- The relationship is enforced by a foreign key from `comment.ticket_id` to `ticket.id`.
+
+### 5.2 Referential integrity
+
+- Deleting a ticket should be handled intentionally.
+- In a typical application, deleting a ticket may either:
+  - cascade delete associated comments, or
+  - prevent deletion while comments exist, depending on the business rule chosen by the implementation.
+- The chosen rule should be explicit and consistent with the project’s lifecycle and data-management strategy.
+
+## 6. Database constraints
+
+The following constraints should be enforced in the database where appropriate:
+
+- Primary key uniqueness for `ticket.id` and `comment.id`
+- Foreign key constraint from `comment.ticket_id` to `ticket.id`
+- Not-null constraints for required fields
+- Check constraints for valid ticket status values
+- Check constraints for valid priority values
+- Check constraints to ensure status values are recognized and consistent
+- Check constraints to prevent empty strings or whitespace-only values for required text fields
+
+### 6.1 Example status check concept
+
+The database should allow only the defined statuses:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+This reduces the chance of invalid persisted state and keeps the business lifecycle explicit.
+
+## 7. Important design decisions
+
+### 7.1 Simple relational structure
+
+The model uses a straightforward relational design instead of a more abstract or highly normalized schema because the application is small and the business domain is simple.
+
+### 7.2 Lifecycle captured on the ticket
+
+Ticket status is stored directly on the ticket record because status is central to listing, filtering, and workflow behavior. This keeps queries straightforward and makes lifecycle checks easy to enforce.
+
+### 7.3 Comments as child records
+
+Comments are stored separately from the ticket so the system can support multiple comments per ticket without bloating the main ticket record.
+
+### 7.4 Data integrity over convenience
+
+Database constraints are used to protect required values and relationship integrity. This ensures that invalid or inconsistent data is not allowed to persist.
+
+### 7.5 Search and filtering support
+
+The model includes indexes that support likely access patterns such as list operations, status filtering, and keyword search. This keeps the application responsive without overcomplicating the schema.
+
+## 8. Summary
+
+The data model for the Support Ticket Management System is intentionally small and efficient:
+
+- Ticket stores the core lifecycle, metadata, and ownership information.
+- Comment stores ticket history and discussion.
+- Relationships are explicit and enforced.
+- Constraints protect required data, domain validity, and referential integrity.
+- Indexes support common listing, searching, and filtering use cases.
+
+This model is appropriate for a small application while still providing a solid foundation for backend validation, persistence, and reporting.
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/spec/data-model.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/spec/data-model.md
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **data-model.md**</summary>
+
+@@ lines 1-1 @@
+
+```
+# Data Model Specification
+
+## 1. Overview
+
+This document defines the persisted data model for the Support Ticket Management System. The model is intentionally small and pragmatic, designed to support ticket creation, listing, detail retrieval, status updates, search, filtering, comments, and persistence in a relational database.
+
+The data model covers the core business entities:
+
+- Ticket
+- Comment
+
+The design keeps the persistence model aligned with the application’s domain while remaining simple enough for a small application.
+
+## 2. Core design principles
+
+- Use a relational model with clear foreign-key relationships.
+- Keep each ticket as a primary record with associated comments as child records.
+- Preserve lifecycle and business-state information in the ticket record.
+- Enforce required data and referential integrity in the database.
+- Keep identifiers stable and predictable for API usage and persistence.
+- Prefer simple, explicit fields over highly abstract or generic models.
+
+## 3. Ticket entity
+
+### 3.1 Purpose
+
+The Ticket entity represents a support request or issue record. It stores the core information required to manage and track the lifecycle of a ticket.
+
+### 3.2 Fields
+
+| Field name | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT or UUID | Primary key, not null, unique | Stable identifier for the ticket |
+| title | VARCHAR(255) | Not null, not blank | A short summary of the issue |
+| description | TEXT | Not null, not blank | Full issue description |
+| status | VARCHAR(32) | Not null | Valid values include OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED |
+| priority | VARCHAR(32) | Not null | Valid values should reflect the supported priority set |
+| assignee | VARCHAR(255) or BIGINT | Nullable | Optional assignee identifier or descriptive assignee name |
+| created_at | TIMESTAMP | Not null | Creation timestamp |
+| updated_at | TIMESTAMP | Not null | Last modification timestamp |
+| closed_at | TIMESTAMP | Nullable | Set only when the ticket reaches a terminal state such as CLOSED |
+| cancelled_at | TIMESTAMP | Nullable | Set only when the ticket is cancelled |
+
+### 3.3 Constraints
+
+- `id` must be unique and not null.
+- `title` must not be null and must contain meaningful non-whitespace content.
+- `description` must not be null and must contain meaningful non-whitespace content.
+- `status` must be one of the supported lifecycle values.
+- `priority` must be one of the supported priority values.
+- `created_at` must be set on creation and must not be null.
+- `updated_at` must be set on creation and updated on each modification.
+- `closed_at` and `cancelled_at` must be null unless the ticket reaches the corresponding terminal state.
+- A ticket must not have conflicting terminal time fields for incompatible states.
+
+### 3.4 Status and lifecycle rules
+
+The system must enforce the following valid lifecycle states:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+Allowed transitions:
+
+- OPEN -> IN_PROGRESS
+- IN_PROGRESS -> RESOLVED
+- RESOLVED -> CLOSED
+- OPEN -> CANCELLED
+- IN_PROGRESS -> CANCELLED
+
+All other transitions are invalid and must be rejected by the backend.
+
+### 3.5 Indexes
+
+- Index on `status` to support filtering by ticket status.
+- Index on `priority` if priority-based queries or reporting are expected.
+- Index on `created_at` for listing and sorting by newest or oldest tickets.
+- Index on `updated_at` for activity-based retrieval and sorting.
+- Optional full-text or trigram index on `title` and `description` for keyword search, if the application needs more advanced text search.
+
+### 3.6 Design decisions
+
+- `status` is stored as a string or enum-backed value because the lifecycle is explicit and simple to validate.
+- `assignee` is intentionally flexible in this specification to allow either a direct user identifier or a textual representation, depending on implementation choice.
+- `created_at` and `updated_at` provide auditing and sorting support.
+- `closed_at` and `cancelled_at` capture when a ticket reached a terminal state, which helps with reporting and state clarity.
+
+## 4. Comment entity
+
+### 4.1 Purpose
+
+The Comment entity represents a user-supplied comment associated with a specific ticket. Comments add context, updates, and history to the ticket.
+
+### 4.2 Fields
+
+| Field name | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT or UUID | Primary key, not null, unique | Stable identifier for the comment |
+| ticket_id | BIGINT or UUID | Foreign key, not null | Reference to owning ticket |
+| content | TEXT | Not null, not blank | Comment body |
+| created_at | TIMESTAMP | Not null | Timestamp when the comment was created |
+| created_by | VARCHAR(255) or BIGINT | Nullable | User or actor that created the comment |
+
+### 4.3 Constraints
+
+- `id` must be unique and not null.
+- `ticket_id` must reference a valid ticket record.
+- `content` must not be null and must contain meaningful non-whitespace text.
+- `created_at` must be set on creation and must not be null.
+- A comment must be attached to exactly one ticket.
+
+### 4.4 Relationships
+
+- A Ticket has many Comments.
+- Each Comment belongs to exactly one Ticket.
+
+### 4.5 Indexes
+
+- Index on `ticket_id` to support retrieving comments for a specific ticket efficiently.
+- Index on `created_at` to support chronological sorting of comments.
+
+### 4.6 Design decisions
+
+- Comments are treated as child records of the parent ticket.
+- This keeps the model simple and allows efficient retrieval of ticket history.
+- `created_by` is optional in this specification because the implementation may use a simplified user model or may omit user attribution if not required by the application.
+
+## 5. Relationships
+
+### 5.1 Ticket -> Comment
+
+- One-to-many relationship.
+- Each ticket can have zero or many comments.
+- Each comment belongs to exactly one ticket.
+- The relationship is enforced by a foreign key from `comment.ticket_id` to `ticket.id`.
+
+### 5.2 Referential integrity
+
+- Deleting a ticket should be handled intentionally.
+- In a typical application, deleting a ticket may either:
+  - cascade delete associated comments, or
+  - prevent deletion while comments exist, depending on the business rule chosen by the implementation.
+- The chosen rule should be explicit and consistent with the project’s lifecycle and data-management strategy.
+
+## 6. Database constraints
+
+The following constraints should be enforced in the database where appropriate:
+
+- Primary key uniqueness for `ticket.id` and `comment.id`
+- Foreign key constraint from `comment.ticket_id` to `ticket.id`
+- Not-null constraints for required fields
+- Check constraints for valid ticket status values
+- Check constraints for valid priority values
+- Check constraints to ensure status values are recognized and consistent
+- Check constraints to prevent empty strings or whitespace-only values for required text fields
+
+### 6.1 Example status check concept
+
+The database should allow only the defined statuses:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+This reduces the chance of invalid persisted state and keeps the business lifecycle explicit.
+
+## 7. Important design decisions
+
+### 7.1 Simple relational structure
+
+The model uses a straightforward relational design instead of a more abstract or highly normalized schema because the application is small and the business domain is simple.
+
+### 7.2 Lifecycle captured on the ticket
+
+Ticket status is stored directly on the ticket record because status is central to listing, filtering, and workflow behavior. This keeps queries straightforward and makes lifecycle checks easy to enforce.
+
+### 7.3 Comments as child records
+
+Comments are stored separately from the ticket so the system can support multiple comments per ticket without bloating the main ticket record.
+
+### 7.4 Data integrity over convenience
+
+Database constraints are used to protect required values and relationship integrity. This ensures that invalid or inconsistent data is not allowed to persist.
+
+### 7.5 Search and filtering support
+
+The model includes indexes that support likely access patterns such as list operations, status filtering, and keyword search. This keeps the application responsive without overcomplicating the schema.
+
+## 8. Summary
+
+The data model for the Support Ticket Management System is intentionally small and efficient:
+
+- Ticket stores the core lifecycle, metadata, and ownership information.
+- Comment stores ticket history and discussion.
+- Relationships are explicit and enforced.
+- Constraints protect required data, domain validity, and referential integrity.
+- Indexes support common listing, searching, and filtering use cases.
+
+This model is appropriate for a small application while still providing a solid foundation for backend validation, persistence, and reporting.
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+## ✅ Data model specification created
+
+I created the data model document at `spec/data-model.md`.
+
+It defines:
+- Ticket entity
+- Comment entity
+- fields, types, and constraints
+- relationships and referential integrity
+- indexes
+- state and lifecycle considerations
+- database constraint guidance and key design decisions
+
+It does not generate Java entity classes, only the persistence-level specification.
+
+---
+
+_**User (2026-09-20 06:02:48Z)**_
+
+Create spec/data-model.md.
+
+Define the entities, fields, types, constraints, relationships and indexes needed for the support ticket system.
+
+Consider:
+- Ticket
+- Comment
+
+Define appropriate database constraints and explain important design decisions.
+
+Do not generate Java entities yet.
+
+---
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
+
+Create File
+</details></tool-use>
