@@ -146,3 +146,7 @@ export function addComment(id: number, content: string): Promise<Comment> {
     body: JSON.stringify({ content }),
   });
 }
+
+export function listComments(id: number): Promise<Comment[]> {
+  return requestJson<Comment[]>(`/tickets/${id}/comments`);
+}

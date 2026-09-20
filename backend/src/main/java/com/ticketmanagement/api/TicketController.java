@@ -66,4 +66,9 @@ public class TicketController {
                                                      @Valid @RequestBody CommentCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ticketService.addComment(id, request));
     }
+
+    @GetMapping("/tickets/{id}/comments")
+    public ResponseEntity<List<CommentResponse>> listComments(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.listComments(id));
+    }
 }

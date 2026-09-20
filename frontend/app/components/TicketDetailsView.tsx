@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ApiClientError, getTicket, Ticket } from '@/lib/api';
+import { ApiClientError, getTicket, listComments, Comment, Ticket } from '@/lib/api';
+import AddCommentForm from '@/app/components/AddCommentForm';
 
 function formatStatus(status: Ticket['status']): string {
   return status.replace('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
@@ -17,13 +18,18 @@ function formatDate(timestamp: string): string {
 
 export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [areCommentsLoading, setAreCommentsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrentRequest = true;
     setIsLoading(true);
     setErrorMessage(null);
+    setAreCommentsLoading(true);
+    setCommentsError(null);
 
     getTicket(ticketId)
       .then((response) => {
@@ -42,6 +48,23 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
       .finally(() => {
         if (isCurrentRequest) {
           setIsLoading(false);
+        }
+      });
+
+    listComments(ticketId)
+      .then((response) => {
+        if (isCurrentRequest) {
+          setComments(response);
+        }
+      })
+      .catch(() => {
+        if (isCurrentRequest) {
+          setCommentsError('Unable to load comments. Please try again.');
+        }
+      })
+      .finally(() => {
+        if (isCurrentRequest) {
+          setAreCommentsLoading(false);
         }
       });
 
@@ -105,9 +128,30 @@ export default function TicketDetailsView({ ticketId }: { ticketId: number }) {
                 <p className="eyebrow">History</p>
                 <h2 id="comments-heading">Comments</h2>
               </div>
-              <span className="count-label">Comments unavailable</span>
+              <span className="count-label">{areCommentsLoading ? 'Loading' : `${comments.length} comment${comments.length === 1 ? '' : 's'}`}</span>
             </div>
-            <p className="empty-copy">Comment history will appear here when that view is connected.</p>
+            {areCommentsLoading && <p className="empty-copy">Loading comments...</p>}
+            {!areCommentsLoading && commentsError && <p className="empty-copy error-state" role="alert">{commentsError}</p>}
+            {!areCommentsLoading && !commentsError && comments.length === 0 && (
+              <p className="empty-copy">No comments yet.</p>
+            )}
+            {!areCommentsLoading && !commentsError && comments.length > 0 && (
+              <ol className="comments-list">
+                {comments.map((comment) => (
+                  <li className="comment-item" key={comment.id}>
+                    <div className="comment-meta">
+                      <strong>{comment.createdBy || 'Support team'}</strong>
+                      <time dateTime={comment.createdAt}>{formatDate(comment.createdAt)}</time>
+                    </div>
+                    <p>{comment.content}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <AddCommentForm
+              ticketId={ticket.id}
+              onCommentAdded={(comment) => setComments((current) => [...current, comment])}
+            />
           </section>
         </>
       )}

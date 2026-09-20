@@ -20,4 +20,6 @@ public interface TicketService {
     TicketResponse updateTicketStatus(Long id, TicketStatusUpdateRequest request);
 
     CommentResponse addComment(Long ticketId, CommentCreateRequest request);
+
+    List<CommentResponse> listComments(Long ticketId);
 }
