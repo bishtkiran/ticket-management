@@ -448,6 +448,183 @@ The specification introduced alternative deletion behavior even though ticket de
 Decision:
 - Do not implement ticket deletion.
 
+## Review 007 — UI Flow Specification
+
+**Artifact reviewed:** `spec/ui-flow.md`
+
+### Finding-001 — Ticket List API mapping was not explicit
+
+The Ticket List specification defined search, filtering, creation, and ticket navigation, but it did not explicitly map each UI action to the corresponding API endpoint.
+
+Decision:
+
+* Ticket list must use `GET /api/tickets`.
+* Search must use `GET /api/tickets/search?keyword={keyword}`.
+* Status filtering must use `GET /api/tickets?status={status}`.
+* Opening a ticket must use `GET /api/tickets/{id}`.
+* Creating a ticket must use `POST /api/tickets`.
+
+Reason:
+
+* The UI flow should remain directly traceable to the API contract.
+* Explicit API mapping reduces ambiguity during implementation and testing.
+
+### Finding-002 — Create Ticket API behavior was not explicit
+
+The Create Ticket flow defined the form fields and validation but did not explicitly identify the API operation and response handling.
+
+Decision:
+
+* Submit the form using `POST /api/tickets`.
+* Expect `201 Created` on successful creation.
+* Use the returned ticket resource to update or refresh the UI.
+* Display backend validation errors when creation fails.
+
+Reason:
+
+* The API contract defines the backend operation.
+* The UI must not assume creation succeeded until the backend confirms it.
+
+### Finding-003 — Ticket Details API mapping was not explicit
+
+The Ticket Details screen defined the displayed fields and actions but did not explicitly specify how ticket details are retrieved.
+
+Decision:
+
+* Load ticket details using `GET /api/tickets/{id}`.
+* Display the returned ticket data.
+* Display a not-found state when the API returns `404 Not Found`.
+* Provide a retry option for recoverable API failures.
+
+Reason:
+
+* The UI needs a deterministic contract for loading a ticket.
+* This keeps UI behavior consistent with the API specification.
+
+### Finding-004 — Edit Ticket API mapping was not explicit
+
+The Edit Ticket flow defined editable fields but did not explicitly identify the API used to persist those changes.
+
+Decision:
+
+* Update ticket fields using `PATCH /api/tickets/{id}`.
+* Allow updates to title, description, priority, and assignee.
+* Expect `200 OK` with the updated ticket resource.
+* Handle `400 Bad Request`, `404 Not Found`, and applicable business validation errors.
+
+Reason:
+
+* The API contract defines `PATCH /api/tickets/{id}` as the ticket field update operation.
+* The UI must reflect the persisted backend state rather than assuming local changes were saved.
+
+### Finding-005 — Status-change API and backend authority needed clarification
+
+The UI correctly described the valid state transitions, but it could be interpreted as allowing the frontend to enforce the state machine.
+
+Correction:
+
+* Status changes must use `PATCH /api/tickets/{id}/status`.
+* The frontend may disable invalid actions for user experience.
+* The backend remains the authoritative source for transition validation.
+* The UI must handle `409 Conflict` when the backend rejects an invalid transition.
+* The UI must not treat a status change as successful until the API confirms it.
+
+Reason:
+
+* `state-machine.md` requires backend enforcement.
+* The frontend must not become the source of truth for lifecycle rules.
+
+### Finding-006 — Add Comment API mapping was not explicit
+
+The Add Comment flow defined comment validation and success behavior but did not explicitly identify the API endpoint.
+
+Decision:
+
+* Submit comments using `POST /api/tickets/{id}/comments`.
+* Require non-blank comment content.
+* Expect `201 Created` on success.
+* Display the returned comment after successful creation.
+* Handle `400 Bad Request` and `404 Not Found` appropriately.
+
+Reason:
+
+* This directly aligns the UI workflow with the API contract.
+* Comments must only be considered persisted after successful backend response.
+
+### Finding-007 — Search behavior needed explicit API contract alignment
+
+The Search section stated that blank search values should revert to normal listing, while the API contract defines `keyword` as required for the dedicated search endpoint.
+
+Decision:
+
+* A blank search value must not call `GET /api/tickets/search`.
+* When the search input is blank, the UI should use the normal ticket-list request instead.
+* A non-blank search term should call `GET /api/tickets/search?keyword={keyword}`.
+* Search results should replace the current list.
+* An empty result set should be displayed as a normal empty state.
+
+Reason:
+
+* This removes ambiguity between the dedicated search endpoint and default listing behavior.
+* It keeps frontend behavior consistent with the API contract.
+
+### Finding-008 — Status filter API mapping was not explicit
+
+The status-filter UI was defined, but the API request and supported values should be stated explicitly.
+
+Decision:
+
+* Status filtering must use `GET /api/tickets?status={status}`.
+* Supported values are:
+
+  * `OPEN`
+  * `IN_PROGRESS`
+  * `RESOLVED`
+  * `CLOSED`
+  * `CANCELLED`
+* The default "All statuses" option must request the normal ticket list without a status filter.
+* Invalid status values returned or detected by the backend must be surfaced as a user-friendly error.
+
+Reason:
+
+* This aligns the UI directly with the API contract and state-machine specification.
+
+### Finding-009 — UI status display must use backend state
+
+The status display section defined visual styling for each state but did not explicitly state that the backend response is authoritative.
+
+Decision:
+
+* The UI must display the status returned by the backend.
+* Status styling must be derived from the current backend status.
+* The UI must not permanently change the displayed status before a successful status-update response.
+* After a successful status update, the UI should use the returned ticket state.
+
+Reason:
+
+* Prevents the UI from displaying a state that was rejected or not persisted by the backend.
+* Maintains consistency with the backend state machine.
+
+### Finding-010 — API error-to-UI mapping needed to be explicit
+
+The UI flow defined user-friendly error messages but did not provide a consistent mapping between API responses and UI behavior.
+
+Decision:
+
+* `400 Bad Request` → display validation or request error.
+* `404 Not Found` → display a resource-not-found state.
+* `409 Conflict` → display an invalid state-transition message.
+* `422 Unprocessable Entity`, if used → display the applicable business validation error.
+* `500 Internal Server Error` → display a generic server error.
+* Network failure → display a connection/retry message.
+* Raw backend/database/exception details must never be shown to the user.
+
+Reason:
+
+* Provides consistent error handling across all UI flows.
+* Aligns the UI with the API contract and error-handling requirements.
+
+
 
 
 
