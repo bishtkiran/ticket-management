@@ -1,6 +1,7 @@
 # Ticket State Machine
 
 ## 1. States
+    
 
 The ticket lifecycle includes the following states:
 
@@ -9,6 +10,21 @@ The ticket lifecycle includes the following states:
 - RESOLVED
 - CLOSED
 - CANCELLED
+
+## 1.1 Initial state
+
+Every newly created ticket shall have the initial status:
+- OPEN
+The client shall not be required to provide an initial status when creating a ticket.
+
+## 1.2 Terminal states
+
+The following are terminal states:
+
+- CLOSED
+- CANCELLED
+
+A ticket in a terminal state cannot transition to any other state.
 
 ## 2. Valid transitions
 
@@ -41,13 +57,16 @@ The backend must reject the following transitions:
 - CANCELLED -> IN_PROGRESS
 - CANCELLED -> RESOLVED
 - CANCELLED -> CLOSED
-- OPEN -> IN_PROGRESS -> CLOSED (if the ticket is not first resolved)
+- A ticket must not transition directly from OPEN to CLOSED.
+- A ticket must not transition directly from IN_PROGRESS to CLOSED.
+- CLOSED can only be reached from RESOLVED.
 
 Any transition not explicitly listed as valid must be rejected.
 
 ## 4. Business rule summary
 
-- The workflow is linear and forward-moving for the normal lifecycle.
+- The normal lifecycle progresses forward from OPEN to IN_PROGRESS,then RESOLVED, then CLOSED.
+- Cancellation provides an alternative terminal path from OPEN or IN_PROGRESS.
 - Tickets may be cancelled only from OPEN or IN_PROGRESS.
 - Once a ticket reaches a terminal status such as CLOSED or CANCELLED, it must not transition back to an earlier state.
 - The backend is the source of truth for transition validation.
@@ -77,6 +96,7 @@ The final status code used by the API should remain consistent across all ticket
 
 ### 7.1 Valid transition tests
 
+- TC-000: A newly created ticket has status OPEN.
 - TC-001: OPEN -> IN_PROGRESS is accepted.
 - TC-002: IN_PROGRESS -> RESOLVED is accepted.
 - TC-003: RESOLVED -> CLOSED is accepted.
@@ -104,8 +124,8 @@ The final status code used by the API should remain consistent across all ticket
 ### 7.3 Business rule tests
 
 - TC-021: A terminal state cannot transition back to any earlier state.
-- TC-022: A ticket in CANCELLED state remains immutable with respect to re-opening.
-- TC-023: A ticket in CLOSED state remains immutable with respect to re-opening or reactivation.
+- TC-022: A ticket in CANCELLED state cannot transition to another status.
+- TC-023: A ticket in CLOSED state cannot transition to another status.
 - TC-024: A status-changing API request with a disallowed transition is rejected before persistence.
 - TC-025: A valid status change persists the new state and the updated state is readable afterward.
 
