@@ -22002,6 +22002,12 @@ Implememt SM-002
 
 _**Agent (copilot/auto)**_
 
+<think><details><summary>Thought Process</summary>
+I’ll map BT-001’s required validation and business-rule cases to the current domain, validation utility, and service tests, then add only the missing edge-case tests and execute them plus the full backend suite.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
 I’ll verify the current status-change path against SM-002’s three acceptance criteria, then add only the missing enforcement or tests. The key check is that validation occurs before , returns 409 for invalid transitions, and is shared by every status-changing API path.
 
 _**Agent (copilot/auto)**_
@@ -22042,4 +22048,1473 @@ _**Agent (copilot/auto)**_
 <summary>Tool use: **copilot_readFile**</summary>
 
 Read `GlobalExceptionHandler.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `implementation-plan.md`, lines 135 to 160
+
+**Input:**
+
+- endLine: `160`
+- filePath: `/home/kiran/Documents/ticket-management/spec/implementation-plan.md`
+- startLine: `135`
+
+**Result:**
+
+```
+- Objective: Define repository tests for persistence and API tests for contract correctness, including invalid transition rejection.
+- Relevant specs: requirements FR-001 to FR-011, ER-001 to ER-009, AC-001 to AC-012; test-strategy §3.2, §3.3, §4, §5, §7, §8.
+- Acceptance criteria:
+  - Repository tests verify creation, retrieval, filtering, and comment persistence.
+  - API tests verify status and validation behavior for valid and invalid requests.
+  - Tests explicitly prove that invalid transitions are rejected by the backend without persisting changes.
+
+## 8. Frontend setup
+
+### FS-001: Set up frontend structure and app shell
+- Objective: Create the Next.js/React app shell and the initial layout for the ticket application.
+- Relevant specs: architecture §4, §11; requirements NFR-006, AC-009.
+- Acceptance criteria:
+  - App shell is created with a route structure sufficient for Ticket List and Ticket Details flows.
+  - Frontend structure is consistent with the application’s small-scale architecture.
+  - No business logic is embedded in the shell beyond basic UI orchestration.
+
+### FS-002: Configure frontend API integration and shared state patterns
+- Objective: Prepare the frontend for calling the backend API using a simple, maintainable pattern without introducing unnecessary abstraction.
+- Relevant specs: architecture §4.1, §4.2, §6, §9.2; API contract §1-15.
+- Acceptance criteria:
+  - A simple API client or fetch layer is planned.
+  - Shared state and request handling are limited to the UI layer.
+  - The frontend remains aligned with backend contracts and does not duplicate business rules.
+
+## 9. Ticket UI
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `test-strategy.md`, lines 1 to 115
+
+**Input:**
+
+- endLine: `115`
+- filePath: `/home/kiran/Documents/ticket-management/spec/test-strategy.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Test Strategy
+
+## 1. Objective
+
+The testing strategy for the Support Ticket Management System is designed to verify the correctness, reliability, and maintainability of the application while keeping the test suite practical and aligned with the project size.
+
+The most critical tests are those that guard business rules, backend validation, and ticket lifecycle enforcement. Special emphasis must be placed on proving that the backend rejects invalid ticket state transitions and that the initial ticket state is OPEN.
+
+## 2. Testing principles
+
+- Test real behavior, not implementation details.
+- Prefer small, focused tests over large, brittle test suites.
+- Validate behavior at the correct layer: UI, API, service, persistence, or business rule.
+- Keep tests readable and maintainable.
+- Use the backend as the source of truth for validation and state-machine enforcement.
+- Avoid tests that only assert framework behavior or mock behavior rather than observable application outcomes.
+
+## 3. Test scope by layer
+
+### 3.1 Unit tests
+
+Unit tests should validate isolated business logic and domain behavior.
+
+Focus areas:
+
+- Ticket validation rules
+- Ticket state transition validation logic
+- Business-rule checks for required fields and invalid transitions
+- Validation of priority and other constrained fields
+- Small helper logic, if any
+
+Examples:
+
+- Ticket title is required
+- Ticket description is required
+- Priority value is recognized and accepted
+- Invalid status transition is rejected
+
+### 3.2 Repository tests
+
+Repository tests verify persistence behavior and database interaction contracts.
+
+Focus areas:
+
+- Persisting a new ticket
+- Retrieving tickets by ID and by list query
+- Filtering by status
+- Saving comments for a given ticket
+- Query behavior for search and list operations
+- Default initial state is OPEN when a ticket is created
+
+Examples:
+
+- A created ticket is stored with status OPEN
+- A ticket can be retrieved by ID
+- Filtering by status returns only matching ticke
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `Ticket.java`, lines 1 to 115
+
+**Input:**
+
+- endLine: `115`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Ticket.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.domain;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class Ticket {
+    private static final AtomicLong ID_GENERATOR = new AtomicLong(1L);
+
+    private final Long id;
+    private String title;
+    private String description;
+    private TicketStatus status;
+    private TicketPriority priority;
+    private String assignee;
+    private final Instant createdAt;
+    private Instant updatedAt;
+    private Instant closedAt;
+    private Instant cancelledAt;
+
+    private Ticket(Long id, String title, String description, TicketPriority priority, String assignee, Instant createdAt) {
+        this.id = id;
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.priority = Objects.requireNonNull(priority, "priority is required");
+        this.assignee = assignee;
+        this.status = TicketStatus.OPEN;
+        this.createdAt = createdAt;
+        this.updatedAt = createdAt;
+    }
+
+    public static Ticket create(String title, String description, TicketPriority priority, String assignee) {
+        return new Ticket(ID_GENERATOR.getAndIncrement(), title, description, priority, assignee, Instant.now());
+    }
+
+    public void update(String title, String description, TicketPriority priority, String assignee) {
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.priority = Objects.requireNonNull(priority, "priority is required");
+        this.assignee = assignee;
+        this.updatedAt = Instant.now();
+    }
+
+    public void changeStatus(TicketStatus newStatus) {
+        Objects.requireNonNull(newStatus, "newStatus is required");
+
+        if (isTransitionAllowed(this.status, newStatus)) {
+            this.status = newStatus;
+            this.updatedAt = Instant.now();
+
+            if (newStatus == TicketStatus.CLOSED) {
+                this.
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketServiceImplTest.java`
+
+**Input:**
+
+- endLine: `220`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.persistence.CommentRepository;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.TicketRepository;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketServiceImplTest {
+
+    private final TicketRepository ticketRepository = org.mockito.Mockito.mock(TicketRepository.class);
+    private final CommentRepository commentRepository = org.mockito.Mockito.mock(CommentRepository.class);
+    private final TicketServiceImpl ticketService = new TicketServiceImpl(ticketRepository, commentRepository);
+
+    @Test
+    void invalidTransitionIsRejectedBeforePersistence() {
+        TicketEntity ticket = ticket(TicketStatus.OPEN);
+        given(ticketRepository.findById(1L)).willReturn(Optional.of(ticket));
+
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("CLOSED");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> ticketService.updateTicketStatus(1L, request));
+
+        assertEquals(409, exception.getStatusCode().value());
+        assertEquals(TicketStatus.OPEN, ticket.getStatus());
+        verify(ticketRepository, never()).save(any(TicketEntity.class));
+    }
+
+    @Test
+    void validTransitionIsPersistedAndReturned() {
+        TicketEntity ticket = ticket(TicketStatus.OPEN);
+ 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketValidationUtilTest.java`
+
+**Input:**
+
+- endLine: `180`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketValidationUtilTest {
+
+    @Test
+    void titleIsRequiredAndTrimmed() {
+        assertEquals("Login issue", TicketValidationUtil.validateTitle("  Login issue  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle("  "));
+    }
+
+    @Test
+    void priorityMustBeSupported() {
+        assertEquals(TicketPriority.HIGH, TicketValidationUtil.validatePriority(" high "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("urgent"));
+    }
+
+    @Test
+    void assigneeMayBeUnassignedButCannotExceedStorageLimit() {
+        assertNull(TicketValidationUtil.normalizeOptionalText("  "));
+        assertEquals("alice@example.com", TicketValidationUtil.normalizeOptionalText(" alice@example.com "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeOptionalText("a".repeat(256)));
+    }
+
+    @Test
+    void searchKeywordIsTrimmedAndBlankMeansNoFilter() {
+        assertEquals("login", TicketValidationUtil.normalizeSearchKeyword("  login  "));
+        assertNull(TicketValidationUtil.normalizeSearchKeyword("   "));
+        assertNull(TicketValidationUtil.normalizeSearchKeyword(null));
+    }
+
+    @Test
+    void statusFilterAcceptsOnlySupportedStates() {
+        assertEquals(TicketStatus.IN_PROGRESS, TicketValidationUtil.validateStatus(" in_progress "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateStatus("UNKNOWN"));
+    }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `test-strategy.md`, lines 115 to 190
+
+**Input:**
+
+- endLine: `190`
+- filePath: `/home/kiran/Documents/ticket-management/spec/test-strategy.md`
+- startLine: `115`
+
+**Result:**
+
+```
+- IN_PROGRESS -> CANCELLED is allowed.
+
+State that every transition not explicitly listed as valid must be tested/rejected, not only the examples.
+
+### 4.3 Invalid transition tests
+
+The test suite must explicitly prove that the backend rejects the following invalid transitions:
+
+- CLOSED -> OPEN
+- RESOLVED -> OPEN
+- CANCELLED -> OPEN
+- OPEN -> RESOLVED
+- OPEN -> CLOSED
+- IN_PROGRESS -> OPEN
+- IN_PROGRESS -> CLOSED
+- RESOLVED -> IN_PROGRESS
+- RESOLVED -> CANCELLED
+- CLOSED -> IN_PROGRESS
+- CLOSED -> RESOLVED
+- CLOSED -> CANCELLED
+- CANCELLED -> IN_PROGRESS
+- CANCELLED -> RESOLVED
+- CANCELLED -> CLOSED
+
+### 4.4 Backend enforcement requirement
+
+The test strategy must ensure that invalid transitions are rejected by the backend before persistence occurs.
+
+This should be proven with tests that:
+
+- attempt an invalid transition through the API
+- verify the HTTP status is 409 Conflict
+- verify the ticket state remains unchanged after the failed request
+- verify the database still contains the original status
+
+This requirement is essential and must not be treated as optional.
+
+## 5. Backend validation tests
+
+Validation tests should cover all critical input and rule checks.
+
+Focus areas:
+
+- Missing required title
+- Missing required description
+- Blank title or description values
+- Invalid priority values
+- Invalid ticket status in update requests
+- Invalid comment content
+- Invalid query parameters for filtering and sorting
+- Invalid ID or malformed path parameters
+
+Examples:
+
+- A create ticket request without title is rejected
+- A create ticket request without description is rejected
+- A ticket update with an unsupported status is rejected
+- An invalid filter value for status is rejected
+- An empty comment body is rejected
+
+## 6. Frontend tests
+
+Frontend tests should validate presentation and user interaction without duplicating full backend validation logic.
+
+Focus areas:
+
+- Rendering the ticket list
+- Displaying empty states
+- Showing loading states
+- Showing validation er
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+BT-001 is a unit-test task, and the current suite covers the happy paths but misses null/blank required inputs, priority null/blank values, title length boundaries, and domain creation/update rejection. I’m adding those edge cases at the utility and domain layers without changing production behavior.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketValidationUtilTest.java**</summary>
+
+@@ lines 1-63 @@
+
+```
+package com.ticketmanagement.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketValidationUtilTest {
+
+    @Test
+    void titleIsRequiredAndTrimmed() {
+        assertEquals("Login issue", TicketValidationUtil.validateTitle("  Login issue  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle(null));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle("  "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.validateTitle("a".repeat(256)));
+    }
+
+    @Test
+    void descriptionIsRequiredAndTrimmed() {
+        assertEquals("Users cannot sign in",
+            TicketValidationUtil.normalizeRequiredText("  Users cannot sign in  ", "description"));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeRequiredText(null, "description"));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeRequiredText("   ", "description"));
+    }
+
+    @Test
+    void priorityMustBeSupported() {
+        assertEquals(TicketPriority.HIGH, TicketValidationUtil.validatePriority(" high "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority(null));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("urgent"));
+    }
+
+    @Test
+    void assigneeMayBeUnassignedButCannotExceedStorageLimit() {
+        assertNull(TicketValidationUtil.normalizeOptionalText("  "));
+        assertEquals("alice@example.com", TicketValidationUtil.normalizeOptionalText(" alice@example.com "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeOptionalText("a".repeat(256)));
+    }
+
+    @Test
+    void searchKeywordIsTrimmedAndBlankMeansNoFilter() {
+        assertEquals("login", TicketValidationUtil.normalizeSearchKeyword("  login  "));
+        assertNull(TicketValidationUtil.normalizeSearchKeyword("   "));
+        assertNull(TicketValidationUtil.normalizeSearchKeyword(null));
+    }
+
+    @Test
+    void statusFilterAcceptsOnlySupportedStates() {
+        assertEquals(TicketStatus.IN_PROGRESS, TicketValidationUtil.validateStatus(" in_progress "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateStatus("UNKNOWN"));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketTest.java**</summary>
+
+@@ lines 1-99 @@
+
+```
+package com.ticketmanagement.domain;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Test;
+
+class TicketTest {
+
+    @Test
+    void newTicketStartsOpenAndKeepsRequiredMetadata() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertNotNull(ticket.getId());
+        assertEquals("Login issue", ticket.getTitle());
+        assertEquals("Users cannot sign in", ticket.getDescription());
+        assertEquals(TicketStatus.OPEN, ticket.getStatus());
+        assertEquals(TicketPriority.HIGH, ticket.getPriority());
+        assertEquals("ops-team", ticket.getAssignee());
+        assertNotNull(ticket.getCreatedAt());
+        assertNotNull(ticket.getUpdatedAt());
+    }
+
+    @Test
+    void ticketCreationRejectsMissingRequiredValues() {
+        assertThrows(IllegalArgumentException.class,
+            () -> Ticket.create(null, "Users cannot sign in", TicketPriority.HIGH, "ops-team"));
+        assertThrows(IllegalArgumentException.class,
+            () -> Ticket.create("Login issue", "   ", TicketPriority.HIGH, "ops-team"));
+        assertThrows(NullPointerException.class,
+            () -> Ticket.create("Login issue", "Users cannot sign in", null, "ops-team"));
+    }
+
+    @Test
+    void ticketUpdateRejectsMissingRequiredValues() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertThrows(IllegalArgumentException.class,
+            () -> ticket.update(" ", "Users cannot sign in", TicketPriority.HIGH, "ops-team"));
+        assertThrows(IllegalArgumentException.class,
+            () -> ticket.update("Login issue", null, TicketPriority.HIGH, "ops-team"));
+        assertThrows(NullPointerException.class,
+            () -> ticket.update("Login issue", "Users cannot sign in", null, "ops-team"));
+    }
+
+    @Test
+    void validStateTransitionsAdvanceTheLifecycle() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        ticket.changeStatus(TicketStatus.IN_PROGRESS);
+        ticket.changeStatus(TicketStatus.RESOLVED);
+        ticket.changeStatus(TicketStatus.CLOSED);
+
+        assertEquals(TicketStatus.CLOSED, ticket.getStatus());
+        assertNotNull(ticket.getClosedAt());
+    }
+
+    @Test
+    void validCancellationTransitionsReachTheTerminalState() {
+        Ticket openTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        openTicket.changeStatus(TicketStatus.CANCELLED);
+
+        Ticket inProgressTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        inProgressTicket.changeStatus(TicketStatus.IN_PROGRESS);
+        inProgressTicket.changeStatus(TicketStatus.CANCELLED);
+
+        assertEquals(TicketStatus.CANCELLED, openTicket.getStatus());
+        assertEquals(TicketStatus.CANCELLED, inProgressTicket.getStatus());
+        assertNotNull(openTicket.getCancelledAt());
+        assertNotNull(inProgressTicket.getCancelledAt());
+    }
+
+    @Test
+    void invalidStateTransitionsAreRejected() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.RESOLVED));
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.CLOSED));
+    }
+
+    @Test
+    void terminalStatesRejectEveryFurtherTransition() {
+        Ticket closedTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        closedTicket.changeStatus(TicketStatus.IN_PROGRESS);
+        closedTicket.changeStatus(TicketStatus.RESOLVED);
+        closedTicket.changeStatus(TicketStatus.CLOSED);
+
+        Ticket cancelledTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        cancelledTicket.changeStatus(TicketStatus.CANCELLED);
+
+        for (TicketStatus status : TicketStatus.values()) {
+            assertThrows(IllegalStateException.class, () -> closedTicket.changeStatus(status));
+            assertThrows(IllegalStateException.class, () -> cancelledTicket.changeStatus(status));
+        }
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the focused BT-001 unit tests covering validation and ticket business-rule edge cases.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketValidationUtilTest,TicketTest test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketValidationUtilTest,TicketTest test` (terminal ID=c505ec4d-7a7b-454d-b62c-3683fa935443). This is the output of running that command instead:
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The focused BT-001 tests pass with the new edge cases. I’m running the full backend suite now to ensure the expanded validation checks do not affect the API and state-machine coverage.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the complete backend test suite after implementing BT-001 coverage.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=c4a38430-f2b7-42c3-838a-c70c326d616e). This is the output of running that command instead:
+14:53:19.620 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:53:19.720 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:53:19.982+05:30  INFO 611261 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 611261 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:53:19.983+05:30  INFO 611261 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
+t.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read Surefire reports for exact BT-001 and full-suite test totals.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=c780dfb4-abd9-4036-a5c0-8cb0580df325). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.156" tests="8" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketVal
+idationUtilTest" time="0.01" tests="6" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.004" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.011" tests="7" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.service.Ticke
+tServiceImplTest" time="0.143" tests="2" errors="0" skipped="0" failures="0">
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+BT-001 now has 13 focused tests across validation utility and ticket domain, and the full suite reports 26 passing tests with zero failures or errors. I’m doing the final static error scan on the two modified test files.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `TicketValidationUtilTest.java`, `TicketTest.java`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java",
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Implemented BT-001 with edge-case unit coverage.
+
+Added tests for:
+
+- Missing/null/blank title.
+- Title length boundary over 255 characters.
+- Missing/null/blank description.
+- Missing/null/blank priority.
+- Unsupported priority values.
+- Missing required ticket values during creation.
+- Invalid ticket updates.
+- New tickets defaulting to .
+- Existing lifecycle and terminal-state rules.
+
+Modified:
+- `backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java`
+- `backend/src/test/java/com/ticketmanagement/domain/TicketTest.java`
+
+Validation completed:
+
+- Focused BT-001 tests passed: 13 tests
+- Full backend suite passed: 26 tests
+- Failures: 0
+- Errors: 0
+
+---
+
+_**User (2026-09-20 09:21:43Z)**_
+
+Implememt BT-001 and execute the tests generated. Cover the edge cases.
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll map BT-001’s required validation and business-rule cases to the current domain, validation utility, and service tests, then add only the missing edge-case tests and execute them plus the full backend suite.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `implementation-plan.md`, lines 135 to 160
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `test-strategy.md`, lines 1 to 115
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `Ticket.java`, lines 1 to 115
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketServiceImplTest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketValidationUtilTest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `test-strategy.md`, lines 115 to 190
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
+
+Created `TicketRepositoryTest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketRepositoryTest.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.persistence;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.ActiveProfiles;
+
+@DataJpaTest
+@ActiveProfiles("test")
+class TicketRepositoryTest {
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @Test
+    void savesTicketWithOpenStatusAndRetrievesItById() {
+        TicketEntity saved = ticketRepository.saveAndFlush(ticket("Login issue", "Users cannot sign in", TicketStatus.OPEN));
+
+        TicketEntity retrieved = ticketRepository.findById(saved.getId()).orElseThrow();
+
+        assertNotNull(retrieved.getId());
+        assertEquals(TicketStatus.OPEN, retrieved.getStatus());
+        assertEquals("Login issue", retrieved.getTitle());
+    }
+
+    @Test
+    void filtersTicketsByStatus() {
+        ticketRepository.saveAndFlush(ticket("Open issue", "Needs work", TicketStatus.OPEN));
+        ticketRepository.saveAndFlush(ticket("Resolved issue", "Already fixed", TicketStatus.RESOLVED));
+
+        List<TicketEntity> results = ticketRepository.findByStatus(TicketStatus.OPEN);
+
+        assertEquals(1, results.size());
+        assertEquals(TicketStatus.OPEN, results.get(0).getStatus());
+    }
+
+    @Test
+    void searchesTicketTitleAndDescriptionCaseInsensitively() {
+        ticketRepository.saveAndFlush(ticket("Login failure", "Users cannot sign in", TicketStatus.OPEN));
+        ticketRepository.saveAndFlush(ticket("Export issue", "CSV download is broken", TicketStatus.OPEN));
+
+        List<TicketEntity> titleResults = ticketRepository.searchByKeyword("LOGIN");
+        List<TicketEntity> descriptionResults = ticketRepository.searchByKeyword("csv download");
+
+        assertEquals(1, titleResults.size());
+        assertEquals("Login failure", titleResults.get(0).getTitle());
+        assertEquals(1, descriptionResults.size());
+        assertEquals("Export issue", descriptionResults.get(0).getTitle());
+    }
+
+    @Test
+    void persistsCommentWithParentTicket() {
+        TicketEntity ticket = ticketRepository.saveAndFlush(
+            ticket("Commented issue", "Needs investigation", TicketStatus.OPEN));
+
+        CommentEntity comment = commentRepository.saveAndFlush(
+            new CommentEntity(ticket, "Investigating this issue", "ops-team"));
+
+        CommentEntity retrieved = commentRepository.findById(comment.getId()).orElseThrow();
+
+        assertNotNull(retrieved.getCreatedAt());
+        assertEquals(ticket.getId(), retrieved.getTicket().getId());
+        assertEquals("Investigating this issue", retrieved.getContent());
+        assertTrue(retrieved.getTicket().getId() > 0);
+    }
+
+    private TicketEntity ticket(String title, String description, TicketStatus status) {
+        return new TicketEntity(title, description, status, TicketPriority.HIGH, "ops-team");
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The repository test was added successfully. The API test patch hit a context mismatch in the import block, so I’m narrowing the patch against the exact current file layout before running anything.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketControllerTest.java`, lines 1 to 35
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketControllerTest.java`, lines 120 to 153
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketControllerTest.java**</summary>
+
+@@ lines 1-157 @@
+
+```
+package com.ticketmanagement.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+
+@WebMvcTest(TicketController.class)
+class TicketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private TicketService ticketService;
+
+    @BeforeEach
+    void setUp() {
+        TicketResponse ticket = new TicketResponse(
+            1L,
+            "Login issue",
+            "Users cannot sign in",
+            "OPEN",
+            "HIGH",
+            "ops-team",
+            Instant.now(),
+            Instant.now(),
+            null,
+            null
+        );
+
+        given(ticketService.createTicket(any(TicketCreateRequest.class))).willReturn(ticket);
+        given(ticketService.listTickets(null, null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets("login", null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets(null, "OPEN")).willReturn(List.of(ticket));
+        given(ticketService.getTicket(1L)).willReturn(ticket);
+        given(ticketService.updateTicket(eq(1L), any(TicketUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.updateTicketStatus(eq(1L), any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.addComment(eq(1L), any(CommentCreateRequest.class)))
+            .willReturn(new CommentResponse(1L, 1L, "Investigating the issue", Instant.now(), null));
+    }
+
+    @Test
+    void createTicketReturnsCreatedResource() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest();
+        request.setTitle("Login issue");
+        request.setDescription("Users cannot sign in");
+        request.setPriority("HIGH");
+        request.setAssignee("ops-team");
+
+        mockMvc.perform(post("/api/tickets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.title").value("Login issue"))
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void listTicketsReturnsTicketCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void getTicketByIdReturnsTicketDetails() throws Exception {
+        mockMvc.perform(get("/api/tickets/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void updateTicketReturnsUpdatedResource() throws Exception {
+        TicketUpdateRequest request = new TicketUpdateRequest();
+        request.setTitle("Updated login issue");
+        request.setDescription("Updated description");
+        request.setPriority("MEDIUM");
+        request.setAssignee("bob@example.com");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Login issue"));
+    }
+
+    @Test
+    void updateStatusReturnsUpdatedResource() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void addCommentReturnsCreatedComment() throws Exception {
+        CommentCreateRequest request = new CommentCreateRequest();
+        request.setContent("Investigating the issue");
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.ticketId").value(1))
+            .andExpect(jsonPath("$.content").value("Investigating the issue"));
+    }
+
+    @Test
+    void searchTicketsReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("keyword", "login"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void filterTicketsByStatusReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("status", "OPEN"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].status").value("OPEN"));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketControllerTest.java**</summary>
+
+@@ lines 1-208 @@
+
+```
+package com.ticketmanagement.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticketmanagement.api.dto.CommentCreateRequest;
+import com.ticketmanagement.api.dto.CommentResponse;
+import com.ticketmanagement.api.dto.TicketCreateRequest;
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.api.dto.TicketUpdateRequest;
+import com.ticketmanagement.service.TicketService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+
+@WebMvcTest(TicketController.class)
+class TicketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private TicketService ticketService;
+
+    @BeforeEach
+    void setUp() {
+        TicketResponse ticket = new TicketResponse(
+            1L,
+            "Login issue",
+            "Users cannot sign in",
+            "OPEN",
+            "HIGH",
+            "ops-team",
+            Instant.now(),
+            Instant.now(),
+            null,
+            null
+        );
+
+        given(ticketService.createTicket(any(TicketCreateRequest.class))).willReturn(ticket);
+        given(ticketService.listTickets(null, null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets("login", null)).willReturn(List.of(ticket));
+        given(ticketService.listTickets(null, "OPEN")).willReturn(List.of(ticket));
+        given(ticketService.getTicket(1L)).willReturn(ticket);
+        given(ticketService.updateTicket(eq(1L), any(TicketUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.updateTicketStatus(eq(1L), any(TicketStatusUpdateRequest.class))).willReturn(ticket);
+        given(ticketService.addComment(eq(1L), any(CommentCreateRequest.class)))
+            .willReturn(new CommentResponse(1L, 1L, "Investigating the issue", Instant.now(), null));
+    }
+
+    @Test
+    void createTicketReturnsCreatedResource() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest();
+        request.setTitle("Login issue");
+        request.setDescription("Users cannot sign in");
+        request.setPriority("HIGH");
+        request.setAssignee("ops-team");
+
+        mockMvc.perform(post("/api/tickets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.title").value("Login issue"))
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void listTicketsReturnsTicketCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void getTicketByIdReturnsTicketDetails() throws Exception {
+        mockMvc.perform(get("/api/tickets/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void updateTicketReturnsUpdatedResource() throws Exception {
+        TicketUpdateRequest request = new TicketUpdateRequest();
+        request.setTitle("Updated login issue");
+        request.setDescription("Updated description");
+        request.setPriority("MEDIUM");
+        request.setAssignee("bob@example.com");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Login issue"));
+    }
+
+    @Test
+    void updateStatusReturnsUpdatedResource() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void addCommentReturnsCreatedComment() throws Exception {
+        CommentCreateRequest request = new CommentCreateRequest();
+        request.setContent("Investigating the issue");
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.ticketId").value(1))
+            .andExpect(jsonPath("$.content").value("Investigating the issue"));
+    }
+
+    @Test
+    void searchTicketsReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("keyword", "login"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].title").value("Login issue"));
+    }
+
+    @Test
+    void filterTicketsByStatusReturnsMatchingCollection() throws Exception {
+        mockMvc.perform(get("/api/tickets").param("status", "OPEN"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].status").value("OPEN"));
+    }
+
+    @Test
+    void createTicketRejectsMissingRequiredTitle() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest();
+        request.setDescription("Users cannot sign in");
+        request.setPriority("HIGH");
+
+        mockMvc.perform(post("/api/tickets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.details[0].field").value("title"));
+    }
+
+    @Test
+    void addCommentRejectsBlankContent() throws Exception {
+        CommentCreateRequest request = new CommentCreateRequest();
+        request.setContent("   ");
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.details[0].field").value("content"));
+    }
+
+    @Test
+    void missingTicketReturnsNotFound() throws Exception {
+        given(ticketService.getTicket(99L))
+            .willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        mockMvc.perform(get("/api/tickets/99"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
+    }
+
+    @Test
+    void invalidStatusTransitionReturnsConflict() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("CLOSED");
+        willThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition"))
+            .given(ticketService).updateTicketStatus(eq(1L), any(TicketStatusUpdateRequest.class));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Both BT-002 test slices are now in place: H2 repository coverage and expanded API contract coverage. I’m running those focused tests first to catch persistence configuration or exception-mapping issues before the full suite.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `content.txt`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The focused BT-002 run initialized the H2 schema, executed repository queries and API tests, and produced no visible failures. I’m reading Surefire summaries now, then I’ll run the complete suite for final confirmation.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+</details></tool-use>
+
+---
+
+_**User (2026-09-20 09:25:40Z)**_
+
+Implement BT-002 simialry and run the cases.
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll add BT-002 coverage for repository persistence/query behavior and public API contracts, including invalid transitions and validation responses, then run the focused cases and the complete backend suite.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findFiles"><details>
+<summary>Tool use: **copilot_findFiles**</summary>
+
+Searched for files matching `ticket-management` · `backend/src/test/**/*Test.java`, 5 matches
+
+**Result:**
+
+```
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/CommentTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketControllerTest.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketControllerTest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketRepository.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `CommentRepository.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `GlobalExceptionHandler.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The repository layer has no tests yet, while the controller suite covers only successful responses. I’ll add one H2-backed repository test class for ticket/comment persistence and query behavior, then extend the existing API test class with validation, not-found, and 409-conflict contract cases.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
+<summary>Tool use: **copilot_createFile**</summary>
+
+Create File
 </details></tool-use>

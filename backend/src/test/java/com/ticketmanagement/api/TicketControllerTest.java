@@ -18,8 +18,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 
 @WebMvcTest(TicketController.class)
 class TicketControllerTest {
@@ -148,5 +151,56 @@ class TicketControllerTest {
         mockMvc.perform(get("/api/tickets").param("status", "OPEN"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[0].status").value("OPEN"));
+    }
+
+    @Test
+    void createTicketRejectsMissingRequiredTitle() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest();
+        request.setDescription("Users cannot sign in");
+        request.setPriority("HIGH");
+
+        mockMvc.perform(post("/api/tickets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.details[0].field").value("title"));
+    }
+
+    @Test
+    void addCommentRejectsBlankContent() throws Exception {
+        CommentCreateRequest request = new CommentCreateRequest();
+        request.setContent("   ");
+
+        mockMvc.perform(post("/api/tickets/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.details[0].field").value("content"));
+    }
+
+    @Test
+    void missingTicketReturnsNotFound() throws Exception {
+        given(ticketService.getTicket(99L))
+            .willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        mockMvc.perform(get("/api/tickets/99"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
+    }
+
+    @Test
+    void invalidStatusTransitionReturnsConflict() throws Exception {
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("CLOSED");
+        willThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition"))
+            .given(ticketService).updateTicketStatus(eq(1L), any(TicketStatusUpdateRequest.class));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/tickets/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 }

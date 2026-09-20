@@ -14,12 +14,27 @@ class TicketValidationUtilTest {
     @Test
     void titleIsRequiredAndTrimmed() {
         assertEquals("Login issue", TicketValidationUtil.validateTitle("  Login issue  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle(null));
         assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle("  "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.validateTitle("a".repeat(256)));
+    }
+
+    @Test
+    void descriptionIsRequiredAndTrimmed() {
+        assertEquals("Users cannot sign in",
+            TicketValidationUtil.normalizeRequiredText("  Users cannot sign in  ", "description"));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeRequiredText(null, "description"));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeRequiredText("   ", "description"));
     }
 
     @Test
     void priorityMustBeSupported() {
         assertEquals(TicketPriority.HIGH, TicketValidationUtil.validatePriority(" high "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority(null));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("  "));
         assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("urgent"));
     }
 

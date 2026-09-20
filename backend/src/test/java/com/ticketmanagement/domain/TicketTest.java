@@ -23,6 +23,28 @@ class TicketTest {
     }
 
     @Test
+    void ticketCreationRejectsMissingRequiredValues() {
+        assertThrows(IllegalArgumentException.class,
+            () -> Ticket.create(null, "Users cannot sign in", TicketPriority.HIGH, "ops-team"));
+        assertThrows(IllegalArgumentException.class,
+            () -> Ticket.create("Login issue", "   ", TicketPriority.HIGH, "ops-team"));
+        assertThrows(NullPointerException.class,
+            () -> Ticket.create("Login issue", "Users cannot sign in", null, "ops-team"));
+    }
+
+    @Test
+    void ticketUpdateRejectsMissingRequiredValues() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertThrows(IllegalArgumentException.class,
+            () -> ticket.update(" ", "Users cannot sign in", TicketPriority.HIGH, "ops-team"));
+        assertThrows(IllegalArgumentException.class,
+            () -> ticket.update("Login issue", null, TicketPriority.HIGH, "ops-team"));
+        assertThrows(NullPointerException.class,
+            () -> ticket.update("Login issue", "Users cannot sign in", null, "ops-team"));
+    }
+
+    @Test
     void validStateTransitionsAdvanceTheLifecycle() {
         Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
 
