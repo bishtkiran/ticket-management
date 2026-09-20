@@ -67,19 +67,12 @@ public class Ticket {
             return next == TicketStatus.OPEN;
         }
 
-        if (current == TicketStatus.OPEN) {
-            return next == TicketStatus.IN_PROGRESS || next == TicketStatus.CANCELLED;
-        }
-
-        if (current == TicketStatus.IN_PROGRESS) {
-            return next == TicketStatus.RESOLVED || next == TicketStatus.CANCELLED;
-        }
-
-        if (current == TicketStatus.RESOLVED) {
-            return next == TicketStatus.CLOSED;
-        }
-
-        return false;
+        return switch (current) {
+            case OPEN -> next == TicketStatus.IN_PROGRESS || next == TicketStatus.CANCELLED;
+            case IN_PROGRESS -> next == TicketStatus.RESOLVED || next == TicketStatus.CANCELLED;
+            case RESOLVED -> next == TicketStatus.CLOSED;
+            case CLOSED, CANCELLED -> false;
+        };
     }
 
     private static String requireText(String value, String fieldName) {

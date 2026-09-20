@@ -19417,46 +19417,273 @@ Implememt BV-001 and make sure implememnation shoild align with the specificatio
 
 _**Agent (copilot/auto)**_
 
+<think><details><summary>Thought Process</summary>
+I’ll implement BV-002 at the existing validation boundary: normalize blank search terms to no filter, keep status values restricted to the five supported states, and preserve comment payload/parent-ticket validation. I’ll add focused tests for keyword and status validation, then run the full backend suite.
+
+The requirements explicitly state that search terms must be trimmed and whitespace-only terms must behave as no filter, so I’m correcting the current blank-keyword rejection to match VR-005. Status validation will remain strict and case-insensitive, while comment validation stays enforced both at the request boundary and service boundary.
+
+The focused validation and controller tests pass after the BV-002 change. I’m running the complete backend suite now to ensure search normalization and strict status filtering did not regress ticket lifecycle or persistence behavior.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
 I’ll compare BV-001’s specified validation rules with the current request DTOs, validation utility, service, and exception handler, then make only the validation-slice changes and run focused tests.
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
-<summary>Tool use: **copilot_findTextInFiles**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Searched for regex `VR-001|VR-002|VR-003|VR-007|BV-001|validation|assignee` (`**/spec/requirements.md`), 15 results
+
+**Input:**
+
+- endLine: `85`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java`
+- startLine: `35`
+
+**Result:**
+
+```
+    public TicketResponse createTicket(TicketCreateRequest request) {
+        String title = TicketValidationUtil.validateTitle(request.getTitle());
+        String description = TicketValidationUtil.normalizeRequiredText(request.getDescription(), "description");
+        TicketPriority priority = TicketValidationUtil.validatePriority(request.getPriority());
+        String assignee = TicketValidationUtil.normalizeOptionalText(request.getAssignee());
+
+        TicketEntity entity = new TicketEntity(
+            title,
+            description,
+            TicketStatus.OPEN,
+            priority,
+            assignee
+        );
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public List<TicketResponse> listTickets(String keyword, String status) {
+        if (keyword != null && keyword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyword must not be blank");
+        }
+        TicketValidationUtil.validateStatus(status);
+
+        List<TicketEntity> tickets = status == null
+            ? (keyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(keyword))
+            : (keyword == null
+                ? ticketRepository.findByStatus(TicketValidationUtil.validateStatus(status))
+                : ticketRepository.findAll().stream()
+                    .filter(ticket -> ticket.getStatus() == TicketValidationUtil.validateStatus(status))
+                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), keyword)
+                        || containsIgnoreCase(ticket.getDescription(), keyword))
+                    .collect(Collectors.toList()));
+
+        return tickets
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public TicketResponse getTicket(Long id) {
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusEx
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `implementation-plan.md`, lines 88 to 115
+
+**Input:**
+
+- endLine: `150`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+public final class TicketValidationUtil {
+
+    private TicketValidationUtil() {
+    }
+
+    public static String normalizeRequiredText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public static String validateTitle(String value) {
+        String title = normalizeRequiredText(value, "title");
+        if (title.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not exceed 255 characters");
+        }
+        return title;
+    }
+
+    public static TicketPriority validatePriority(String rawPriority) {
+        if (rawPriority == null || rawPriority.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priority is required");
+        }
+
+        try {
+            return TicketPriority.valueOf(rawPriority.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket priority");
+        }
+    }
+
+    public static TicketStatus validateStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TicketStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
+        }
+    }
+
+    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.B
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketValidationUtil.java`
+
+**Input:**
+
+- endLine: `80`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/dto/CommentCreateRequest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public class CommentCreateRequest {
+    @NotBlank(message = "content is required")
+    private String content;
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketCreateRequest.java`
+
+**Input:**
+
+- endLine: `180`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.ticketmanagement.domain.TicketPriority;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketValidationUtilTest {
+
+    @Test
+    void titleIsRequiredAndTrimmed() {
+        assertEquals("Login issue", TicketValidationUtil.validateTitle("  Login issue  "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateTitle("  "));
+    }
+
+    @Test
+    void priorityMustBeSupported() {
+        assertEquals(TicketPriority.HIGH, TicketValidationUtil.validatePriority(" high "));
+        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validatePriority("urgent"));
+    }
+
+    @Test
+    void assigneeMayBeUnassignedButCannotExceedStorageLimit() {
+        assertNull(TicketValidationUtil.normalizeOptionalText("  "));
+        assertEquals("alice@example.com", TicketValidationUtil.normalizeOptionalText(" alice@example.com "));
+        assertThrows(ResponseStatusException.class, () ->
+            TicketValidationUtil.normalizeOptionalText("a".repeat(256)));
+    }
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketUpdateRequest.java`
+
+**Input:**
+
+- endLine: `75`
+- filePath: `/home/kiran/Documents/ticket-management/spec/requirements.md`
+- startLine: `63`
+
+**Result:**
+
+```
+## 6. Validation Requirements
+
+- VR-001: The system shall reject empty or missing required ticket fields such as title and description.
+- VR-002: The system shall reject invalid ticket priority values that are not recognized by the supported priority model.
+- VR-003: If an assignee is provided, it shall conform to the assignee representation defined in the data model and API contract.
+- VR-004: The system shall reject invalid comment payloads or comments attached to unknown tickets.
+- VR-005: Search terms shall be trimmed before processing. A blank search term shall be treated as no search filter.
+- VR-006: A status filter shall accept only one of the supported ticket status values: OPEN, IN_PROGRESS, RESOLVED, CLOSED, or CANCELLED.
+- VR-007: The system shall validate all backend requests before changing system state or persisting data.
+- VR-008: The system shall validate ticket status transitions against the defined backend state machine before allowing a change.
+- VR-009: The system shall reject CLOSED → OPEN, RESOLVED → OPEN, and CANCELLED → OPEN as invalid transitions.
+
+## 7. Error-Handling Requirements
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -19465,26 +19692,201 @@ The current implementation already centralizes required text and priority checks
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
-<summary>Tool use: **copilot_findTextInFiles**</summary>
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
 
 Searched for regex `assignee|validation|@NotBlank|@Size|request` (`**/spec/api-contract.md`), 65 results
+
+**Input:**
+
+- explanation: `Implement BV-002 search normalization and centralized status validation while preserving comment payload validation and unknown-ticket handling.`
+- input:
+
+```
+*** Begin Patch
+*** Update File: /home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java
+@@
+     public static TicketStatus validateStatus(String rawStatus) {
+@@
+         }
+     }
++
++    public static String normalizeSearchKeyword(String keyword) {
++        if (keyword == null || keyword.isBlank()) {
++            return null;
++        }
++        return keyword.trim();
++    }
+ 
+     public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+*** Update File: /home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java
+@@
+     @Override
+     public List<TicketResponse> listTickets(String keyword, String status) {
+-        if (keyword != null && keyword.isBlank()) {
+-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyword must not be blank");
+-        }
+-        TicketValidationUtil.validateStatus(status);
++        String normalizedKeyword = TicketValidationUtil.normalizeSearchKeyword(keyword);
++        TicketStatus normalizedStatus = TicketValidationUtil.validateStatus(status);
+ 
+-        List<TicketEntity> tickets = status == null
+-            ? (keyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(keyword))
+-            : (keyword == null
+-                ? ticketRepository.findByStatus(TicketValidationUtil.validateStatus(status))
++        List<TicketEntity> tickets = normalizedStatus == null
++            ? (normalizedKeyword == null ? ticketRepository.findAll() : ticketRepository.searchByKeyword(normalizedKeyword))
++            : (normalizedKeyword == null
++                ? ticketRepository.findByStatus(normalizedStatus)
+                 : ticketRepository.findAll().stream()
+-                    .filter(ticket -> ticket.getStatus() == TicketValidationUtil.validateStatus(status))
+-                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), keyword)
+-                        || containsIgnoreCase(ticket.getDescription(), keyword))
++                    .filter(ticket -> ticket.getStatus() == normalizedStatus)
++                    .filter(ticket -> containsIgnoreCase(ticket.getTitle(), normalizedKeyword)
++                        || containsIgnoreCase(ticket.getDescription(), normalizedKeyword))
+                     .collect(Collectors.toList()));
+*** Update File: /home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java
+@@
+ import com.ticketmanagement.domain.TicketPriority;
++import com.ticketmanagement.domain.TicketStatus;
+@@
+     void assigneeMayBeUnassignedButCannotExceedStorageLimit() {
+@@
+             TicketValidationUtil.normalizeOptionalText("a".repeat(256)));
+     }
++
++    @Test
++    void searchKeywordIsTrimmedAndBlankMeansNoFilter() {
++        assertEquals("login", TicketValidationUtil.normalizeSearchKeyword("  login  "));
++        assertNull(TicketValidationUtil.normalizeSearchKeyword("   "));
++        assertNull(TicketValidationUtil.normalizeSearchKeyword(null));
++    }
++
++    @Test
++    void statusFilterAcceptsOnlySupportedStates() {
++        assertEquals(TicketStatus.IN_PROGRESS, TicketValidationUtil.validateStatus(" in_progress "));
++        assertThrows(ResponseStatusException.class, () -> TicketValidationUtil.validateStatus("UNKNOWN"));
++    }
+ }
+*** End Patch
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
-<summary>Tool use: **copilot_findTextInFiles**</summary>
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
 
 Searched for regex `TicketValidationUtil|invalid priority|assignee|validation` (`**/backend/src/test/**`), 4 results
+
+Run focused validation and API tests for BV-002 search, status-filter, and comment validation behavior.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ValidationUtilTest,*ControllerTest' test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest='*ValidationUtilTest,*ControllerTest' test` (terminal ID=c36b1dd9-8563-4455-92ee-b92c62141d6f). This is the output of running that command instead:
+14:38:15.458 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:38:15.546 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:38:15.777+05:30  INFO 608602 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 608602 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:38:15.778+05:30  INFO 608602 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WAR
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
 
 Read `requirements.md`, lines 60 to 82
+
+Run the complete backend regression suite after implementing BV-002.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=484dd758-9c50-48f3-a9db-277b155db270). This is the output of running that command instead:
+14:38:24.852 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:38:24.963 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:38:25.238+05:30  INFO 608806 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 608806 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:38:25.240+05:30  INFO 608806 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use,
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -19503,6 +19905,109 @@ _**Agent (copilot/auto)**_
 Read `TicketEntity.java`, lines 20 to 85
 </details></tool-use>
 
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read the Surefire reports for exact BV-002 test totals and failure counts.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=dae8ab8d-b1b1-4d6f-8da0-f3ebadcf74be). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.365" tests="8" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketVal
+idationUtilTest" time="0.009" tests="5" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.007" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.005" tests="3" errors="0" skipped="0" failures="0">
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The full suite passes with 19 tests and no failures or errors. I’m performing the final static error check on the BV-002 files before closing out.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `TicketValidationUtil.java`, `TicketServiceImpl.java`, `TicketValidationUtilTest.java`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java",
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Implemented BV-002 according to the validation requirements.
+
+Changes:
+- Search keywords are trimmed before processing.
+- Blank or whitespace-only keywords now mean no search filter.
+- Status filters accept only:
+  - 
+  - 
+  - 
+  - 
+  - 
+- Invalid status values are rejected.
+- Existing comment validation remains enforced for blank content and unknown tickets.
+- Added focused tests for search and status validation.
+
+Files changed:
+- `backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java`
+- `backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java`
+- `backend/src/test/java/com/ticketmanagement/api/TicketValidationUtilTest.java`
+
+Validation completed successfully:
+
+- 19 tests passed
+- 0 failures
+- 0 errors
+
 ---
 
 _**User (2026-09-20 09:07:54Z)**_
@@ -19513,46 +20018,332 @@ Implement BV-002 similarly.
 
 _**Agent (copilot/auto)**_
 
+<think><details><summary>Thought Process</summary>
+I’ll verify the existing lifecycle implementation against `spec/state-machine.md`, then make only the SM-001 changes needed for the documented states and transitions, with focused domain tests for every allowed and prohibited transition.
+
+The existing domain behavior already matches the documented five states and five valid transitions; the gap is explicit coverage, not a missing lifecycle rule. I’ll make the transition table explicit in the domain method and add tests for both cancellation paths and terminal-state rejection, without adding new states, transitions, or API behavior.
+
+The focused `TicketTest` suite passes with the explicit transition table and new cancellation/terminal tests. I’m running the full backend suite now to confirm the SM-001 change remains compatible with the existing API and validation behavior.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
 I’ll implement BV-002 at the existing validation boundary: normalize blank search terms to no filter, keep status values restricted to the five supported states, and preserve comment payload/parent-ticket validation. I’ll add focused tests for keyword and status validation, then run the full backend suite.
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketServiceImpl.java`, lines 35 to 85
+
+**Input:**
+
+- endLine: `145`
+- filePath: `/home/kiran/Documents/ticket-management/spec/implementation-plan.md`
+- startLine: `116`
+
+**Result:**
+
+```
+### SM-002: Define backend state-machine enforcement contract
+- Objective: Make the backend responsibility for state validation explicit and consistent between all status-changing endpoints.
+- Relevant specs: requirements BR-011, BR-012, ER-008, ER-009; architecture §8; state-machine §5-6; API contract §8.
+- Acceptance criteria:
+  - Every status-changing API path uses the same backend state-machine validation logic.
+  - Invalid transitions are rejected before persistence.
+  - The frontend is not trusted to enforce lifecycle rules.
+
+## 7. Backend tests
+
+### BT-001: Create backend unit-test plan for validation and business rules
+- Objective: Define focused unit tests for required validation, ticket fields, priority values, and default state behavior.
+- Relevant specs: requirements VR-001 to VR-009, BR-001 to BR-012, test-strategy §3.1, §5.
+- Acceptance criteria:
+  - Unit tests cover required ticket field validation.
+  - Unit tests cover invalid priority and invalid assignee conditions.
+  - Unit tests assert that new tickets initialize to OPEN.
+
+### BT-002: Create backend repository and API test plan for ticket persistence and HTTP behavior
+- Objective: Define repository tests for persistence and API tests for contract correctness, including invalid transition rejection.
+- Relevant specs: requirements FR-001 to FR-011, ER-001 to ER-009, AC-001 to AC-012; test-strategy §3.2, §3.3, §4, §5, §7, §8.
+- Acceptance criteria:
+  - Repository tests verify creation, retrieval, filtering, and comment persistence.
+  - API tests verify status and validation behavior for valid and invalid requests.
+  - Tests explicitly prove that invalid transitions are rejected by the backend without persisting changes.
+
+## 8. Frontend setup
+
+### FS-001: Set up frontend structure and app shell
+- Objective: Create the Next.js/React app shell and the initial layout for the ticket application.
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketValidationUtil.java`
+
+**Input:**
+
+- endLine: `150`
+- filePath: `/home/kiran/Documents/ticket-management/spec/state-machine.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Ticket State Machine
+
+## 1. States
+    
+
+The ticket lifecycle includes the following states:
+
+- OPEN
+- IN_PROGRESS
+- RESOLVED
+- CLOSED
+- CANCELLED
+
+## 1.1 Initial state
+
+Every newly created ticket shall have the initial status:
+- OPEN
+The client shall not be required to provide an initial status when creating a ticket.
+
+## 1.2 Terminal states
+
+The following are terminal states:
+
+- CLOSED
+- CANCELLED
+
+A ticket in a terminal state cannot transition to any other state.
+
+## 2. Valid transitions
+
+The following transitions are valid:
+
+- OPEN -> IN_PROGRESS
+- IN_PROGRESS -> RESOLVED
+- RESOLVED -> CLOSED
+- OPEN -> CANCELLED
+- IN_PROGRESS -> CANCELLED
+
+The system must allow only these transitions. Every other transition is invalid.
+
+## 3. Invalid transition examples
+
+The backend must reject the following transitions:
+
+- CLOSED -> OPEN
+- RESOLVED -> OPEN
+- CANCELLED -> OPEN
+- OPEN -> RESOLVED
+- OPEN -> CLOSED
+- IN_PROGRESS -> OPEN
+- IN_PROGRESS -> CLOSED
+- RESOLVED -> IN_PROGRESS
+- RESOLVED -> CANCELLED
+- CLOSED -> IN_PROGRESS
+- CLOSED -> RESOLVED
+- CLOSED -> CANCELLED
+- CANCELLED -> IN_PROGRESS
+- CANCELLED -> RESOLVED
+- CANCELLED -> CLOSED
+- A ticket must not transition directly from OPEN to CLOSED.
+- A ticket must not transition directly from IN_PROGRESS to CLOSED.
+- CLOSED can only be reached from RESOLVED.
+
+Any transition not explicitly listed as valid must be rejected.
+
+## 4. Business rule summary
+
+- The normal lifecycle progresses forward from OPEN to IN_PROGRESS,then RESOLVED, then CLOSED.
+- Cancellation provides an alternative terminal path from OPEN or IN_PROGRESS.
+- Tickets may be cancelled only from OPEN or IN_PROGRESS.
+- Once a ticket reaches a terminal status such as CLOSED or CANCELLED, it must not transition back to an earlier state.
+- The backend is the source of truth for transition validation.
+- The frontend must not be trusted to enforce or determine valid transitions.
+
+## 5. Expected API behaviour
+
+- Any API endpoint that updates ticket status must valid
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `CommentCreateRequest.java`
+
+**Input:**
+
+- endLine: `80`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/TicketStatus.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.domain;
+
+public enum TicketStatus {
+    OPEN,
+    IN_PROGRESS,
+    RESOLVED,
+    CLOSED,
+    CANCELLED
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `TicketValidationUtilTest.java`
+
+**Input:**
+
+- endLine: `100`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Ticket.java`
+- startLine: `35`
+
+**Result:**
+
+```
+
+    public void update(String title, String description, TicketPriority priority, String assignee) {
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.priority = Objects.requireNonNull(priority, "priority is required");
+        this.assignee = assignee;
+        this.updatedAt = Instant.now();
+    }
+
+    public void changeStatus(TicketStatus newStatus) {
+        Objects.requireNonNull(newStatus, "newStatus is required");
+
+        if (isTransitionAllowed(this.status, newStatus)) {
+            this.status = newStatus;
+            this.updatedAt = Instant.now();
+
+            if (newStatus == TicketStatus.CLOSED) {
+                this.closedAt = Instant.now();
+            } else if (newStatus == TicketStatus.CANCELLED) {
+                this.cancelledAt = Instant.now();
+            } else {
+                this.closedAt = null;
+                this.cancelledAt = null;
+            }
+            return;
+        }
+
+        throw new IllegalStateException("Invalid ticket status transition from " + this.status + " to " + newStatus);
+    }
+
+    private boolean isTransitionAllowed(TicketStatus current, TicketStatus next) {
+        if (current == null) {
+            return next == TicketStatus.OPEN;
+        }
+
+        if (current == TicketStatus.OPEN) {
+            return next == TicketStatus.IN_PROGRESS || next == TicketStatus.CANCELLED;
+        }
+
+        if (current == TicketStatus.IN_PROGRESS) {
+            return next == TicketStatus.RESOLVED || next == TicketStatus.CANCELLED;
+        }
+
+        if (current == TicketStatus.RESOLVED) {
+            return next == TicketStatus.CLOSED;
+        }
+
+        return false;
+    }
+
+    private static String requireText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public Long getId() {
+        
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `requirements.md`, lines 63 to 75
+
+**Input:**
+
+- endLine: `140`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.domain;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Test;
+
+class TicketTest {
+
+    @Test
+    void newTicketStartsOpenAndKeepsRequiredMetadata() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertNotNull(ticket.getId());
+        assertEquals("Login issue", ticket.getTitle());
+        assertEquals("Users cannot sign in", ticket.getDescription());
+        assertEquals(TicketStatus.OPEN, ticket.getStatus());
+        assertEquals(TicketPriority.HIGH, ticket.getPriority());
+        assertEquals("ops-team", ticket.getAssignee());
+        assertNotNull(ticket.getCreatedAt());
+        assertNotNull(ticket.getUpdatedAt());
+    }
+
+    @Test
+    void validStateTransitionsAdvanceTheLifecycle() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        ticket.changeStatus(TicketStatus.IN_PROGRESS);
+        ticket.changeStatus(TicketStatus.RESOLVED);
+        ticket.changeStatus(TicketStatus.CLOSED);
+
+        assertEquals(TicketStatus.CLOSED, ticket.getStatus());
+        assertNotNull(ticket.getClosedAt());
+    }
+
+    @Test
+    void invalidStateTransitionsAreRejected() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.RESOLVED));
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.CLOSED));
+    }
+}
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -19944,10 +20735,102 @@ class TicketValidationUtilTest {
 
 _**Agent (copilot/auto)**_
 
-<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
-<summary>Tool use: **run_in_terminal**</summary>
+<tool-use data-tool-type="write" data-tool-name="apply_patch"><details>
+<summary>Tool use: **apply_patch**</summary>
 
 Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+**Input:**
+
+- explanation: `Make the documented SM-001 transition table explicit in the domain model and cover cancellation and terminal-state rules with focused tests.`
+- input:
+
+```
+*** Begin Patch
+*** Update File: /home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Ticket.java
+@@
+     private boolean isTransitionAllowed(TicketStatus current, TicketStatus next) {
+         if (current == null) {
+             return next == TicketStatus.OPEN;
+         }
+ 
+-        if (current == TicketStatus.OPEN) {
+-            return next == TicketStatus.IN_PROGRESS || next == TicketStatus.CANCELLED;
+-        }
+-
+-        if (current == TicketStatus.IN_PROGRESS) {
+-            return next == TicketStatus.RESOLVED || next == TicketStatus.CANCELLED;
+-        }
+-
+-        if (current == TicketStatus.RESOLVED) {
+-            return next == TicketStatus.CLOSED;
+-        }
+-
+-        return false;
++        return switch (current) {
++            case OPEN -> next == TicketStatus.IN_PROGRESS || next == TicketStatus.CANCELLED;
++            case IN_PROGRESS -> next == TicketStatus.RESOLVED || next == TicketStatus.CANCELLED;
++            case RESOLVED -> next == TicketStatus.CLOSED;
++            case CLOSED, CANCELLED -> false;
++        };
+     }
+*** Update File: /home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java
+@@
+     void validStateTransitionsAdvanceTheLifecycle() {
+         Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+@@
+         assertNotNull(ticket.getClosedAt());
+     }
++
++    @Test
++    void validCancellationTransitionsReachTheTerminalState() {
++        Ticket openTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
++        openTicket.changeStatus(TicketStatus.CANCELLED);
++
++        Ticket inProgressTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
++        inProgressTicket.changeStatus(TicketStatus.IN_PROGRESS);
++        inProgressTicket.changeStatus(TicketStatus.CANCELLED);
++
++        assertEquals(TicketStatus.CANCELLED, openTicket.getStatus());
++        assertEquals(TicketStatus.CANCELLED, inProgressTicket.getStatus());
++        assertNotNull(openTicket.getCancelledAt());
++        assertNotNull(inProgressTicket.getCancelledAt());
++    }
+ 
+     @Test
+     void invalidStateTransitionsAreRejected() {
+@@
+         assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.RESOLVED));
+         assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.CLOSED));
+     }
++
++    @Test
++    void terminalStatesRejectEveryFurtherTransition() {
++        Ticket closedTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
++        closedTicket.changeStatus(TicketStatus.IN_PROGRESS);
++        closedTicket.changeStatus(TicketStatus.RESOLVED);
++        closedTicket.changeStatus(TicketStatus.CLOSED);
++
++        Ticket cancelledTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
++        cancelledTicket.changeStatus(TicketStatus.CANCELLED);
++
++        for (TicketStatus status : TicketStatus.values()) {
++            assertThrows(IllegalStateException.class, () -> closedTicket.changeStatus(status));
++            assertThrows(IllegalStateException.class, () -> cancelledTicket.changeStatus(status));
++        }
++    }
+ }
+*** End Patch
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Ticket.java
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java
+```
 </details></tool-use>
 
 _**Agent (copilot/auto)**_
@@ -19960,4 +20843,1203 @@ _**Agent (copilot/auto)**_
 <summary>Tool use: **run_in_terminal**</summary>
 
 Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the focused ticket domain tests for the SM-001 lifecycle and transition rules.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketTest test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketTest test` (terminal ID=3700b7c6-cff2-4bd8-8f12-c0510cfa2773). This is the output of running that command instead:
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+ suite passes with the explicit transition table and new cancellation/terminal tests. I’m running the full backend suite now to confirm the SM-001 change remains compatible with the existing API and validation behavior.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run all backend tests after implementing and covering SM-001.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=0d6e36b5-e9a5-4fb9-ad1b-3b4774b4651c). This is the output of running that command instead:
+14:43:58.457 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:43:58.557 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:43:58.829+05:30  INFO 609724 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 609724 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:43:58.830+05:30  INFO 609724 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use,
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read Surefire reports to confirm exact SM-001 and full-suite test counts.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=80f1a1cc-e380-4368-93f8-22f4149cc600). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.163" tests="8" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketVal
+idationUtilTest" time="0.009" tests="5" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.004" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.006" tests="5" errors="0" skipped="0" failures="0">
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The complete suite passes: 21 tests total, including 5 ticket state-machine tests, with zero failures or errors. I’m doing the final static error check on the two SM-001 files.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `Ticket.java`, `TicketTest.java`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Ticket.java",
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/domain/Ticket.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/domain/TicketTest.java">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+Implemented SM-001 strictly according to `spec/state-machine.md`.
+
+Changes:
+- Made the allowed transition table explicit in .
+- Confirmed initial state is .
+- Preserved terminal states  and .
+- Added tests for:
+  - Normal lifecycle transitions.
+  - `OPEN -> CANCELLED`.
+  - `IN_PROGRESS -> CANCELLED`.
+  - Rejection of all terminal-state transitions.
+
+Files changed:
+- `backend/src/main/java/com/ticketmanagement/domain/Ticket.java`
+- `backend/src/test/java/com/ticketmanagement/domain/TicketTest.java`
+
+Validation completed:
+
+- 21 backend tests passed
+- 0 failures
+- 0 errors
+
+---
+
+_**User (2026-09-20 09:13:08Z)**_
+
+Now implememt the SM-001 and make sure that the implemations aligns with what is mentioned in the state-machine.md file Don't implememt anything which is not specified.
+
+---
+
+_**Agent (copilot/auto)**_
+
+<think><details><summary>Thought Process</summary>
+I’ll verify the current status-change path against SM-002’s three acceptance criteria, then add only the missing enforcement or tests. The key check is that validation occurs before `save`, returns 409 for invalid transitions, and is shared by every status-changing API path.
+
+The status API already validates through `TicketValidationUtil` before mutating or saving the entity, and there is only one status-changing endpoint. The missing SM-002 proof is service-level coverage, so I’m adding tests that demonstrate invalid transitions return conflict without persistence and valid transitions save the new state.
+</details></think>
+
+_**Agent (copilot/auto)**_
+
+I’ll verify the existing lifecycle implementation against `state-machine.md`, then make only the SM-001 changes needed for the documented states and transitions, with focused domain tests for every allowed and prohibited transition.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `implementation-plan.md`, lines 116 to 145
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `state-machine.md`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `Ticket.java`, lines 35 to 100
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketStatus.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketTest.java`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `implementation-plan.md`, lines 100 to 135
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The existing domain behavior already matches the documented five states and five valid transitions; the gap is explicit coverage, not a missing lifecycle rule. I’ll make the transition table explicit in the domain method and add tests for both cancellation paths and terminal-state rejection, without adding new states, transitions, or API behavior.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **Ticket.java**</summary>
+
+@@ lines 1-126 @@
+
+```
+package com.ticketmanagement.domain;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class Ticket {
+    private static final AtomicLong ID_GENERATOR = new AtomicLong(1L);
+
+    private final Long id;
+    private String title;
+    private String description;
+    private TicketStatus status;
+    private TicketPriority priority;
+    private String assignee;
+    private final Instant createdAt;
+    private Instant updatedAt;
+    private Instant closedAt;
+    private Instant cancelledAt;
+
+    private Ticket(Long id, String title, String description, TicketPriority priority, String assignee, Instant createdAt) {
+        this.id = id;
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.priority = Objects.requireNonNull(priority, "priority is required");
+        this.assignee = assignee;
+        this.status = TicketStatus.OPEN;
+        this.createdAt = createdAt;
+        this.updatedAt = createdAt;
+    }
+
+    public static Ticket create(String title, String description, TicketPriority priority, String assignee) {
+        return new Ticket(ID_GENERATOR.getAndIncrement(), title, description, priority, assignee, Instant.now());
+    }
+
+    public void update(String title, String description, TicketPriority priority, String assignee) {
+        this.title = requireText(title, "title");
+        this.description = requireText(description, "description");
+        this.priority = Objects.requireNonNull(priority, "priority is required");
+        this.assignee = assignee;
+        this.updatedAt = Instant.now();
+    }
+
+    public void changeStatus(TicketStatus newStatus) {
+        Objects.requireNonNull(newStatus, "newStatus is required");
+
+        if (isTransitionAllowed(this.status, newStatus)) {
+            this.status = newStatus;
+            this.updatedAt = Instant.now();
+
+            if (newStatus == TicketStatus.CLOSED) {
+                this.closedAt = Instant.now();
+            } else if (newStatus == TicketStatus.CANCELLED) {
+                this.cancelledAt = Instant.now();
+            } else {
+                this.closedAt = null;
+                this.cancelledAt = null;
+            }
+            return;
+        }
+
+        throw new IllegalStateException("Invalid ticket status transition from " + this.status + " to " + newStatus);
+    }
+
+    private boolean isTransitionAllowed(TicketStatus current, TicketStatus next) {
+        if (current == null) {
+            return next == TicketStatus.OPEN;
+        }
+
+        return switch (current) {
+            case OPEN -> next == TicketStatus.IN_PROGRESS || next == TicketStatus.CANCELLED;
+            case IN_PROGRESS -> next == TicketStatus.RESOLVED || next == TicketStatus.CANCELLED;
+            case RESOLVED -> next == TicketStatus.CLOSED;
+            case CLOSED, CANCELLED -> false;
+        };
+    }
+
+    private static String requireText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public TicketStatus getStatus() {
+        return status;
+    }
+
+    public TicketPriority getPriority() {
+        return priority;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public Instant getClosedAt() {
+        return closedAt;
+    }
+
+    public Instant getCancelledAt() {
+        return cancelledAt;
+    }
+}
+
+```
+
+@@ lines 126-133 @@ (deleted)
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketTest.java**</summary>
+
+@@ lines 1-77 @@
+
+```
+package com.ticketmanagement.domain;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Test;
+
+class TicketTest {
+
+    @Test
+    void newTicketStartsOpenAndKeepsRequiredMetadata() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertNotNull(ticket.getId());
+        assertEquals("Login issue", ticket.getTitle());
+        assertEquals("Users cannot sign in", ticket.getDescription());
+        assertEquals(TicketStatus.OPEN, ticket.getStatus());
+        assertEquals(TicketPriority.HIGH, ticket.getPriority());
+        assertEquals("ops-team", ticket.getAssignee());
+        assertNotNull(ticket.getCreatedAt());
+        assertNotNull(ticket.getUpdatedAt());
+    }
+
+    @Test
+    void validStateTransitionsAdvanceTheLifecycle() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        ticket.changeStatus(TicketStatus.IN_PROGRESS);
+        ticket.changeStatus(TicketStatus.RESOLVED);
+        ticket.changeStatus(TicketStatus.CLOSED);
+
+        assertEquals(TicketStatus.CLOSED, ticket.getStatus());
+        assertNotNull(ticket.getClosedAt());
+    }
+
+    @Test
+    void validCancellationTransitionsReachTheTerminalState() {
+        Ticket openTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        openTicket.changeStatus(TicketStatus.CANCELLED);
+
+        Ticket inProgressTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        inProgressTicket.changeStatus(TicketStatus.IN_PROGRESS);
+        inProgressTicket.changeStatus(TicketStatus.CANCELLED);
+
+        assertEquals(TicketStatus.CANCELLED, openTicket.getStatus());
+        assertEquals(TicketStatus.CANCELLED, inProgressTicket.getStatus());
+        assertNotNull(openTicket.getCancelledAt());
+        assertNotNull(inProgressTicket.getCancelledAt());
+    }
+
+    @Test
+    void invalidStateTransitionsAreRejected() {
+        Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.RESOLVED));
+        assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.CLOSED));
+    }
+
+    @Test
+    void terminalStatesRejectEveryFurtherTransition() {
+        Ticket closedTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        closedTicket.changeStatus(TicketStatus.IN_PROGRESS);
+        closedTicket.changeStatus(TicketStatus.RESOLVED);
+        closedTicket.changeStatus(TicketStatus.CLOSED);
+
+        Ticket cancelledTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        cancelledTicket.changeStatus(TicketStatus.CANCELLED);
+
+        for (TicketStatus status : TicketStatus.values()) {
+            assertThrows(IllegalStateException.class, () -> closedTicket.changeStatus(status));
+            assertThrows(IllegalStateException.class, () -> cancelledTicket.changeStatus(status));
+        }
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The focused 
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `setStatus\(|changeStatus\(|validateStatusTransition|PatchMapping.*status` (`**/backend/src/main/**`), 8 results
+
+**Input:**
+
+- includePattern: `backend/src/main/**`
+- isRegexp: `true`
+- maxResults: `100`
+- query: `setStatus\(|changeStatus\(|validateStatusTransition|PatchMapping.*status`
+
+**Result:**
+
+```
+Found 8 matches in 7 files for "setStatus\(|changeStatus\(|validateStatusTransition|PatchMapping.*status"
+
+backend/src/main/java/com/ticketmanagement/api/dto/TicketResponse.java
+62:    public void setStatus(String status) {
+
+backend/src/main/java/com/ticketmanagement/api/dto/TicketStatusUpdateRequest.java
+10:    public void setStatus(String status) {
+
+backend/src/main/java/com/ticketmanagement/api/TicketController.java
+58:    @PatchMapping("/tickets/{id}/status")
+
+backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java
+59:    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+
+backend/src/main/java/com/ticketmanagement/domain/Ticket.java
+44:    public void changeStatus(TicketStatus newStatus) {
+
+backend/src/main/java/com/ticketmanagement/persistence/TicketEntity.java
+139:    public void setStatus(TicketStatus status) {
+
+backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java
+127:        TicketValidationUtil.validateStatusTransition(entity.getStatus(), nextStatus);
+129:        entity.setStatus(nextStatus);
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `implementation-plan.md`, lines 120 to 140
+
+**Input:**
+
+- endLine: `140`
+- filePath: `/home/kiran/Documents/ticket-management/spec/implementation-plan.md`
+- startLine: `120`
+
+**Result:**
+
+```
+  - Every status-changing API path uses the same backend state-machine validation logic.
+  - Invalid transitions are rejected before persistence.
+  - The frontend is not trusted to enforce lifecycle rules.
+
+## 7. Backend tests
+
+### BT-001: Create backend unit-test plan for validation and business rules
+- Objective: Define focused unit tests for required validation, ticket fields, priority values, and default state behavior.
+- Relevant specs: requirements VR-001 to VR-009, BR-001 to BR-012, test-strategy §3.1, §5.
+- Acceptance criteria:
+  - Unit tests cover required ticket field validation.
+  - Unit tests cover invalid priority and invalid assignee conditions.
+  - Unit tests assert that new tickets initialize to OPEN.
+
+### BT-002: Create backend repository and API test plan for ticket persistence and HTTP behavior
+- Objective: Define repository tests for persistence and API tests for contract correctness, including invalid transition rejection.
+- Relevant specs: requirements FR-001 to FR-011, ER-001 to ER-009, AC-001 to AC-012; test-strategy §3.2, §3.3, §4, §5, §7, §8.
+- Acceptance criteria:
+  - Repository tests verify creation, retrieval, filtering, and comment persistence.
+  - API tests verify status and validation behavior for valid and invalid requests.
+  - Tests explicitly prove that invalid transitions are rejected by the backend without persisting changes.
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketValidationUtil.java`, lines 35 to 96
+
+**Input:**
+
+- endLine: `100`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java`
+- startLine: `35`
+
+**Result:**
+
+```
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket priority");
+        }
+    }
+
+    public static TicketStatus validateStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TicketStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ticket status");
+        }
+    }
+
+    public static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim();
+    }
+
+    public static void validateStatusTransition(TicketStatus currentStatus, TicketStatus nextStatus) {
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        if (currentStatus == null) {
+            if (nextStatus != TicketStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid ticket status transition from null to " + nextStatus);
+            }
+            return;
+        }
+
+        boolean allowed = switch (currentStatus) {
+            case OPEN -> nextStatus == TicketStatus.IN_PROGRESS || nextStatus == TicketStatus.CANCELLED;
+            case IN_PROGRESS -> nextStatus == TicketStatus.RESOLVED || nextStatus == TicketStatus.CANCELLED;
+            case RESOLVED -> nextStatus == TicketStatus.CLOSED;
+            default -> false;
+        };
+
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Invalid ticket status transition from " + currentStatus + " to " + nextStatus);
+        }
+    }
+
+    public static String normalizeOptionalText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `TicketServiceImpl.java`, lines 115 to 189
+
+**Input:**
+
+- endLine: `190`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java`
+- startLine: `115`
+
+**Result:**
+
+```
+        if (request == null || request.getStatus() == null || request.getStatus().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketEntity entity = ticketRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        TicketStatus nextStatus = TicketValidationUtil.validateStatus(request.getStatus());
+        if (nextStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        TicketValidationUtil.validateStatusTransition(entity.getStatus(), nextStatus);
+
+        entity.setStatus(nextStatus);
+        Instant now = Instant.now();
+        if (nextStatus == TicketStatus.CLOSED) {
+            entity.setClosedAt(now);
+            entity.setCancelledAt(null);
+        } else if (nextStatus == TicketStatus.CANCELLED) {
+            entity.setCancelledAt(now);
+            entity.setClosedAt(null);
+        } else {
+            entity.setClosedAt(null);
+            entity.setCancelledAt(null);
+        }
+
+        TicketEntity saved = ticketRepository.save(entity);
+        return toResponse(saved);
+    }
+
+    @Override
+    public CommentResponse addComment(Long ticketId, CommentCreateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        String content = TicketValidationUtil.normalizeRequiredText(request.getContent(), "content");
+        TicketEntity ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        CommentEntity saved = commentRepository.save(new CommentEntity(ticket, content, null));
+        return toCommentResponse(saved);
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLower
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `GlobalExceptionHandler.java`
+
+**Input:**
+
+- endLine: `100`
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/GlobalExceptionHandler.java`
+- startLine: `1`
+
+**Result:**
+
+```
+package com.ticketmanagement.api;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
+        List<ApiFieldError> details = ex.getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .map(this::toFieldError)
+            .collect(Collectors.toList());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+            "VALIDATION_ERROR",
+            "Request validation failed.",
+            details
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            "BUSINESS_ERROR",
+            ex.getReason() == null ? "Request failed." : ex.getReason(),
+            List.of()
+        );
+        return ResponseEntity.status(ex.getStatusCode()).body(response);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            "INTERNAL_ERROR",
+            "An unexpected error occurred.",
+            List.of()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    private ApiFieldError toF
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The status API already validates through  before mutating or saving the entity, and there is only one status-changing endpoint. The missing SM-002 proof is service-level coverage, so I’m adding tests that demonstrate invalid transitions return conflict without persistence and valid transitions save the new state.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `TicketServiceImplTest.java`
+
+**Input:**
+
+- content:
+
+```
+package com.ticketmanagement.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.persistence.CommentRepository;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.TicketRepository;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketServiceImplTest {
+
+    private final TicketRepository ticketRepository = org.mockito.Mockito.mock(TicketRepository.class);
+    private final CommentRepository commentRepository = org.mockito.Mockito.mock(CommentRepository.class);
+    private final TicketServiceImpl ticketService = new TicketServiceImpl(ticketRepository, commentRepository);
+
+    @Test
+    void invalidTransitionIsRejectedBeforePersistence() {
+        TicketEntity ticket = ticket(TicketStatus.OPEN);
+        given(ticketRepository.findById(1L)).willReturn(Optional.of(ticket));
+
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("CLOSED");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> ticketService.updateTicketStatus(1L, request));
+
+        assertEquals(409, exception.getStatusCode().value());
+        assertEquals(TicketStatus.OPEN, ticket.getStatus());
+        verify(ticketRepository, never()).save(any(TicketEntity.class));
+    }
+
+    @Test
+    void validTransitionIsPersistedAndReturned() {
+        TicketEntity ticket = ticket(TicketStatus.OPEN);
+        given(ticketRepository.findById(1L)).willReturn(Optional.of(ticket));
+        given(ticketRepository.save(ticket)).willReturn(ticket);
+
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        TicketResponse response = ticketService.updateTicketStatus(1L, request);
+
+        assertEquals(TicketStatus.IN_PROGRESS, ticket.getStatus());
+        assertEquals("IN_PROGRESS", response.getStatus());
+        verify(ticketRepository).save(ticket);
+    }
+
+    private TicketEntity ticket(TicketStatus status) {
+        TicketEntity ticket = new TicketEntity(
+            "Login issue",
+            "Users cannot sign in",
+            status,
+            TicketPriority.HIGH,
+            "ops-team"
+        );
+        return ticket;
+    }
+}
+
+```
+
+- filePath: `/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java`
+
+**Result:**
+
+```
+The following files were successfully edited:
+/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **TicketServiceImplTest.java**</summary>
+
+@@ lines 1-1 @@
+
+```
+package com.ticketmanagement.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import com.ticketmanagement.api.dto.TicketResponse;
+import com.ticketmanagement.api.dto.TicketStatusUpdateRequest;
+import com.ticketmanagement.persistence.CommentRepository;
+import com.ticketmanagement.persistence.TicketEntity;
+import com.ticketmanagement.persistence.TicketRepository;
+import com.ticketmanagement.domain.TicketPriority;
+import com.ticketmanagement.domain.TicketStatus;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class TicketServiceImplTest {
+
+    private final TicketRepository ticketRepository = org.mockito.Mockito.mock(TicketRepository.class);
+    private final CommentRepository commentRepository = org.mockito.Mockito.mock(CommentRepository.class);
+    private final TicketServiceImpl ticketService = new TicketServiceImpl(ticketRepository, commentRepository);
+
+    @Test
+    void invalidTransitionIsRejectedBeforePersistence() {
+        TicketEntity ticket = ticket(TicketStatus.OPEN);
+        given(ticketRepository.findById(1L)).willReturn(Optional.of(ticket));
+
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("CLOSED");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> ticketService.updateTicketStatus(1L, request));
+
+        assertEquals(409, exception.getStatusCode().value());
+        assertEquals(TicketStatus.OPEN, ticket.getStatus());
+        verify(ticketRepository, never()).save(any(TicketEntity.class));
+    }
+
+    @Test
+    void validTransitionIsPersistedAndReturned() {
+        TicketEntity ticket = ticket(TicketStatus.OPEN);
+        given(ticketRepository.findById(1L)).willReturn(Optional.of(ticket));
+        given(ticketRepository.save(ticket)).willReturn(ticket);
+
+        TicketStatusUpdateRequest request = new TicketStatusUpdateRequest();
+        request.setStatus("IN_PROGRESS");
+
+        TicketResponse response = ticketService.updateTicketStatus(1L, request);
+
+        assertEquals(TicketStatus.IN_PROGRESS, ticket.getStatus());
+        assertEquals("IN_PROGRESS", response.getStatus());
+        verify(ticketRepository).save(ticket);
+    }
+
+    private TicketEntity ticket(TicketStatus status) {
+        TicketEntity ticket = new TicketEntity(
+            "Login issue",
+            "Users cannot sign in",
+            status,
+            TicketPriority.HIGH,
+            "ops-team"
+        );
+        return ticket;
+    }
+}
+
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the focused service tests proving SM-002 transition validation occurs before persistence.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketServiceImplTest test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q -Dtest=TicketServiceImplTest test` (terminal ID=6e312b3b-1c97-4484-931b-8030f147a6d2). This is the output of running that command instead:
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
+t.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future rel
+ease
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The focused SM-002 service tests pass, including the no-save assertion for an invalid `OPEN -> CLOSED` transition and successful persistence for `OPEN -> IN_PROGRESS`. I’m running the complete backend suite now.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` JAVA\_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH m...`
+
+Run the full backend regression suite after adding SM-002 enforcement coverage.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` JAVA_HOME=/home/kiran/.local/jdk21 PATH=/home/kiran/.local/jdk21/bin:$PATH mvn -q test` (terminal ID=995d3f89-f1e2-4d3e-bc72-9f431a36d275). This is the output of running that command instead:
+14:48:06.980 [main] INFO org.springframework.test.context.support.AnnotationConf
+igContextLoaderUtils -- Could not detect default configuration classes for test
+class [com.ticketmanagement.api.TicketControllerTest]: TicketControllerTest does
+ not declare any static, non-private, non-final, nested classes annotated with @
+Configuration.
+14:48:07.080 [main] INFO org.springframework.boot.test.context.SpringBootTestCon
+textBootstrapper -- Found @SpringBootConfiguration com.ticketmanagement.TicketMa
+nagementApplication for test class com.ticketmanagement.api.TicketControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-09-20T14:48:07.324+05:30  INFO 610438 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : Starting TicketControlle
+rTest using Java 21.0.12.1 with PID 610438 (started by kiran in /home/kiran/Docu
+ments/ticket-management/backend)
+2026-09-20T14:48:07.325+05:30  INFO 610438 --- [ticket-management-backend] [
+       main] c.t.api.TicketControllerTest             : The following 1 profile
+is active: "local"
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader clas
+ses because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/kiran/.m2/repository/ne
+t/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicA
+gentLoading to hide this warning
+WARNING: If a serviceability tool is not in use,
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` grep -hE '<testsuite .\*tests="' target/surefire-reports/\*.xml`
+
+Read Surefire reports to confirm SM-002 and full-suite results.
+
+```bash
+cd /home/kiran/Documents/ticket-management/backend && grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml
+```
+
+**Result:**
+
+```
+Note: The tool simplified the command to ` grep -hE '<testsuite .*tests="' target/surefire-reports/*.xml` (terminal ID=7a37f74d-8769-4777-96ab-4b077058dc09). This is the output of running that command instead:
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketCon
+trollerTest" time="2.11" tests="8" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.api.TicketVal
+idationUtilTest" time="0.011" tests="5" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Commen
+tTest" time="0.003" tests="3" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.domain.Ticket
+Test" time="0.008" tests="5" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespace
+SchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/sure
+fire-test-report-3.0.xsd" version="3.0" name="com.ticketmanagement.service.Ticke
+tServiceImplTest" time="0.153" tests="2" errors="0" skipped="0" failures="0">
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+The full suite passes with 23 tests and zero failures or errors, including the new service-level SM-002 checks. I’m running one final static error scan on the touched test and service files.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `TicketServiceImpl.java`, `TicketValidationUtil.java`, `TicketServiceImplTest.java`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java",
+  "/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java",
+  "/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/service/TicketServiceImpl.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/main/java/com/ticketmanagement/api/TicketValidationUtil.java">
+No errors found
+</errors>
+<errors path="/home/kiran/Documents/ticket-management/backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+SM-002 is implemented and verified.
+
+The existing backend status-change flow already:
+- Validates transitions server-side.
+- Rejects invalid transitions with `409 Conflict`.
+- Validates before modifying or saving the entity.
+- Does not rely on frontend state.
+
+Added focused service tests in `backend/src/test/java/com/ticketmanagement/service/TicketServiceImplTest.java` proving:
+
+- Invalid transitions do not persist changes.
+- Valid transitions persist and return the updated state.
+
+Validation completed:
+
+- 23 backend tests passed
+- 0 failures
+- 0 errors
+
+---
+
+_**User (2026-09-20 09:15:44Z)**_
+
+Implememt SM-002
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll verify the current status-change path against SM-002’s three acceptance criteria, then add only the missing enforcement or tests. The key check is that validation occurs before , returns 409 for invalid transitions, and is shared by every status-changing API path.
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_findTextInFiles"><details>
+<summary>Tool use: **copilot_findTextInFiles**</summary>
+
+Searched for regex `setStatus\(|changeStatus\(|validateStatusTransition|PatchMapping.*status` (`**/backend/src/main/**`), 8 results
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `implementation-plan.md`, lines 120 to 140
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketValidationUtil.java`, lines 35 to 96
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `TicketServiceImpl.java`, lines 115 to 189
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `GlobalExceptionHandler.java`
 </details></tool-use>

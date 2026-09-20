@@ -35,10 +35,41 @@ class TicketTest {
     }
 
     @Test
+    void validCancellationTransitionsReachTheTerminalState() {
+        Ticket openTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        openTicket.changeStatus(TicketStatus.CANCELLED);
+
+        Ticket inProgressTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        inProgressTicket.changeStatus(TicketStatus.IN_PROGRESS);
+        inProgressTicket.changeStatus(TicketStatus.CANCELLED);
+
+        assertEquals(TicketStatus.CANCELLED, openTicket.getStatus());
+        assertEquals(TicketStatus.CANCELLED, inProgressTicket.getStatus());
+        assertNotNull(openTicket.getCancelledAt());
+        assertNotNull(inProgressTicket.getCancelledAt());
+    }
+
+    @Test
     void invalidStateTransitionsAreRejected() {
         Ticket ticket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
 
         assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.RESOLVED));
         assertThrows(IllegalStateException.class, () -> ticket.changeStatus(TicketStatus.CLOSED));
+    }
+
+    @Test
+    void terminalStatesRejectEveryFurtherTransition() {
+        Ticket closedTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        closedTicket.changeStatus(TicketStatus.IN_PROGRESS);
+        closedTicket.changeStatus(TicketStatus.RESOLVED);
+        closedTicket.changeStatus(TicketStatus.CLOSED);
+
+        Ticket cancelledTicket = Ticket.create("Login issue", "Users cannot sign in", TicketPriority.HIGH, "ops-team");
+        cancelledTicket.changeStatus(TicketStatus.CANCELLED);
+
+        for (TicketStatus status : TicketStatus.values()) {
+            assertThrows(IllegalStateException.class, () -> closedTicket.changeStatus(status));
+            assertThrows(IllegalStateException.class, () -> cancelledTicket.changeStatus(status));
+        }
     }
 }
