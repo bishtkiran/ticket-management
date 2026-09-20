@@ -65,14 +65,12 @@ class TicketLifecycleIntegrationTest {
 
         mockMvc.perform(patch("/api/tickets/{id}", ticketId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "title": "Login failure after reset",
-                      "description": "Users cannot sign in after resetting a password",
-                      "priority": "CRITICAL",
-                      "assignee": "identity-team"
-                    }
-                    """))
+                .content(objectMapper.writeValueAsString(new TicketPayload(
+                    "Login failure after reset",
+                    "Users cannot sign in after resetting a password",
+                    "CRITICAL",
+                    "identity-team"
+                ))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("Login failure after reset"))
             .andExpect(jsonPath("$.priority").value("CRITICAL"))
@@ -80,7 +78,9 @@ class TicketLifecycleIntegrationTest {
 
         mockMvc.perform(post("/api/tickets/{id}/comments", ticketId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"content":"The identity team is investigating."}"""))
+                .content(objectMapper.writeValueAsString(
+                    new CommentPayload("The identity team is investigating.")
+                )))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.ticketId").value(ticketId))
             .andExpect(jsonPath("$.content").value("The identity team is investigating."));
@@ -214,5 +214,8 @@ class TicketLifecycleIntegrationTest {
     }
 
     private record StatusPayload(String status) {
+    }
+
+    private record CommentPayload(String content) {
     }
 }
