@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ApiClientError, listTickets, Ticket, TicketStatus } from '@/lib/api';
+import { PriorityBadge, StatusBadge } from '@/app/components/TicketUi';
 import {
   isSupportedStatus,
   normalizeSearchKeyword,
@@ -18,20 +20,22 @@ const statuses: Array<{ value: TicketStatus | ''; label: string }> = [
   })),
 ];
 
-function formatStatus(status: TicketStatus): string {
-  return status.replace('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
-}
-
 function formatDate(timestamp: string): string {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' })
     .format(new Date(timestamp));
 }
 
 export default function TicketListView() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initialKeyword = normalizeSearchKeyword(searchParams.get('keyword') ?? '');
+  const initialStatus = searchParams.get('status') ?? '';
+  const safeInitialStatus = isSupportedStatus(initialStatus) ? initialStatus : '';
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [keyword, setKeyword] = useState('');
-  const [appliedKeyword, setAppliedKeyword] = useState('');
-  const [status, setStatus] = useState<TicketStatus | ''>('');
+  const [keyword, setKeyword] = useState(initialKeyword);
+  const [appliedKeyword, setAppliedKeyword] = useState(initialKeyword);
+  const [status, setStatus] = useState<TicketStatus | ''>(safeInitialStatus);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
@@ -75,9 +79,19 @@ export default function TicketListView() {
     };
   }, [appliedKeyword, status, retryVersion]);
 
+  function updateListUrl(nextKeyword: string, nextStatus: TicketStatus | '') {
+    const params = new URLSearchParams();
+    if (nextKeyword) params.set('keyword', nextKeyword);
+    if (nextStatus) params.set('status', nextStatus);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setAppliedKeyword(normalizeSearchKeyword(keyword));
+    const nextKeyword = normalizeSearchKeyword(keyword);
+    setAppliedKeyword(nextKeyword);
+    updateListUrl(nextKeyword, status);
   }
 
   function changeStatus(value: string) {
@@ -85,33 +99,52 @@ export default function TicketListView() {
     if (!validationError && (value === '' || isSupportedStatus(value))) {
       setFilterError(null);
       setStatus(value);
+      updateListUrl(appliedKeyword, value);
       return;
     }
     setFilterError(validationError ?? 'Please select a valid status.');
     setStatus('');
+    updateListUrl(appliedKeyword, '');
   }
+
+  function clearFilters() {
+    setKeyword('');
+    setAppliedKeyword('');
+    setStatus('');
+    setFilterError(null);
+    router.replace(pathname, { scroll: false });
+  }
+
+  const hasActiveFilters = Boolean(appliedKeyword || status);
+  const returnPath = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
 
   return (
     <main className="app-shell">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Support workspace</p>
+          <p className="eyebrow">Ticket workspace</p>
           <h1>Tickets</h1>
-          <p className="page-summary">Track the issues that need attention across your team.</p>
+          <p className="page-summary">Review, assign, and resolve customer requests from one place.</p>
         </div>
-        <Link className="primary-button" href="/tickets/new">Create ticket</Link>
+        <Link className="primary-button" href="/tickets/new"><span aria-hidden="true">＋</span>Create ticket</Link>
       </header>
 
       <form className="toolbar" aria-label="Ticket list controls" onSubmit={submitSearch}>
         <label className="search-field">
           <span className="sr-only">Search tickets</span>
-          <input
-            type="search"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="Search tickets"
-            disabled={isLoading}
-          />
+          <span className="search-input">
+            <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+              <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+              <path d="m15.5 15.5 4 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+            </svg>
+            <input
+              type="search"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="Search by title or description..."
+              disabled={isLoading}
+            />
+          </span>
         </label>
         <label className="filter-field">
           <span className="sr-only">Filter by status</span>
@@ -128,8 +161,32 @@ export default function TicketListView() {
           </select>
         </label>
         <button className="secondary-button" type="submit" disabled={isLoading}>Search</button>
+        {hasActiveFilters && (
+          <button className="text-button" type="button" onClick={clearFilters} disabled={isLoading}>
+            Clear filters
+          </button>
+        )}
       </form>
       {filterError && <p className="filter-error" id="status-filter-error" role="alert">{filterError}</p>}
+      {hasActiveFilters && (
+        <div className="active-filters" aria-label="Active filters">
+          <span>Active filters:</span>
+          {appliedKeyword && (
+            <button aria-label={`Remove search filter ${appliedKeyword}`} type="button" onClick={() => {
+              setKeyword('');
+              setAppliedKeyword('');
+              updateListUrl('', status);
+            }}>
+              Search: “{appliedKeyword}” <span aria-hidden="true">×</span>
+            </button>
+          )}
+          {status && (
+            <button aria-label={`Remove status filter ${status}`} type="button" onClick={() => changeStatus('')}>
+              {statuses.find((option) => option.value === status)?.label} <span aria-hidden="true">×</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <section className="ticket-panel" aria-labelledby="ticket-list-heading" aria-busy={isLoading}>
         <div className="panel-heading">
@@ -137,10 +194,14 @@ export default function TicketListView() {
             <p className="eyebrow">Current queue</p>
             <h2 id="ticket-list-heading">All tickets</h2>
           </div>
-          <span className="count-label">{isLoading ? 'Loading' : `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`}</span>
+          <span className="count-label">{isLoading ? 'Loading' : `${tickets.length} ${hasActiveFilters ? 'matching ' : ''}ticket${tickets.length === 1 ? '' : 's'}`}</span>
         </div>
 
-        {isLoading && <p className="state-panel">Loading tickets...</p>}
+        {isLoading && (
+          <div className="ticket-skeleton" role="status" aria-label="Loading tickets">
+            {[1, 2, 3, 4].map((row) => <span key={row} />)}
+          </div>
+        )}
         {!isLoading && errorMessage && (
           <div className="state-panel error-state" role="alert">
             <p>{errorMessage}</p>
@@ -151,28 +212,39 @@ export default function TicketListView() {
         )}
         {!isLoading && !errorMessage && tickets.length === 0 && (
           <div className="state-panel">
+            <span className="empty-icon" aria-hidden="true">{hasActiveFilters ? '⌕' : '◇'}</span>
             <strong>{appliedKeyword ? 'No tickets match your search' : status ? 'No tickets found for the selected status' : 'No tickets found'}</strong>
-            <p>{appliedKeyword || status ? 'Try another search or filter.' : 'Create a ticket to get started.'}</p>
+            <p>{hasActiveFilters ? 'Try changing your search or clearing the active filters.' : 'Create your first support ticket to get started.'}</p>
+            {hasActiveFilters
+              ? <button className="secondary-button empty-action" type="button" onClick={clearFilters}>Clear filters</button>
+              : <Link className="primary-button empty-action" href="/tickets/new">Create ticket</Link>}
           </div>
         )}
         {!isLoading && !errorMessage && tickets.length > 0 && (
-          <div className="ticket-list">
-            <div className="ticket-row ticket-list-header" aria-hidden="true">
-              <span>Sr. No.</span>
-              <span>Ticket</span>
-              <span>Status</span>
-              <span>Priority</span>
-              <span>Assignee</span>
-              <span>Date</span>
+          <div className="ticket-list" role="table" aria-label="Tickets">
+            <div className="ticket-row ticket-list-header" role="row">
+              <span role="columnheader">Ticket ID</span>
+              <span role="columnheader">Ticket</span>
+              <span role="columnheader">Status</span>
+              <span role="columnheader">Priority</span>
+              <span role="columnheader">Assignee</span>
+              <span role="columnheader">Updated</span>
+              <span role="columnheader">Action</span>
             </div>
             {tickets.map((ticket) => (
-              <Link className="ticket-row" href={`/tickets/${ticket.id}`} key={ticket.id}>
-                <span className="ticket-id">#{ticket.id}</span>
-                <span className="ticket-title">{ticket.title}</span>
-                <span className={`status-badge status-${ticket.status.toLowerCase()}`}>{formatStatus(ticket.status)}</span>
-                <span className="priority-label">{ticket.priority}</span>
-                <span className="assignee-label">{ticket.assignee || 'Unassigned'}</span>
-                <span className="updated-label">{formatDate(ticket.updatedAt)}</span>
+              <Link
+                className="ticket-row"
+                href={`/tickets/${ticket.id}?from=${encodeURIComponent(returnPath)}`}
+                key={ticket.id}
+                role="row"
+              >
+                <span className="ticket-id" role="cell">TICKET-{ticket.id}</span>
+                <span className="ticket-title" role="cell">{ticket.title}</span>
+                <span role="cell"><StatusBadge status={ticket.status} /></span>
+                <span role="cell"><PriorityBadge priority={ticket.priority} /></span>
+                <span className="assignee-label" role="cell">{ticket.assignee || 'Unassigned'}</span>
+                <span className="updated-label" role="cell">{formatDate(ticket.updatedAt)}</span>
+                <span className="view-ticket" role="cell"><span aria-hidden="true">→</span><span className="sr-only">View ticket {ticket.id}</span></span>
               </Link>
             ))}
           </div>

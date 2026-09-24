@@ -24,13 +24,23 @@ async function loadTicket(id: string): Promise<TicketLoadResult> {
   }
 }
 
-export default async function EditTicketPage({ params }: { params: { id: string } }) {
+export default async function EditTicketPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { from?: string };
+}) {
   const result = await loadTicket(params.id);
   const ticket = result.state === 'loaded' ? result.ticket : null;
+  const returnPath = searchParams.from?.startsWith('/') && !searchParams.from.startsWith('//')
+    ? searchParams.from
+    : '/';
+  const detailPath = `/tickets/${params.id}?from=${encodeURIComponent(returnPath)}`;
 
   return (
-    <main className="app-shell detail-shell">
-      <Link className="back-link" href={`/tickets/${params.id}`}>Back to ticket</Link>
+    <main className="app-shell detail-shell form-page-shell">
+      <Link className="back-link" href={detailPath}>Back to ticket</Link>
       {result.state === 'not-found' && (
         <p className="state-panel error-state detail-state" role="alert">Ticket not found.</p>
       )}
@@ -51,7 +61,7 @@ export default async function EditTicketPage({ params }: { params: { id: string 
           </header>
           {ticket.status === 'CLOSED' || ticket.status === 'CANCELLED' ? (
             <p className="state-panel">Terminal tickets are read-only and cannot be edited.</p>
-          ) : <EditTicketForm ticket={ticket} />}
+          ) : <EditTicketForm ticket={ticket} returnPath={returnPath} />}
         </>
       )}
     </main>

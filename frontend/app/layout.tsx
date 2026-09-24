@@ -1,15 +1,18 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import AppShell from '@/app/components/AppShell';
 
 export const metadata: Metadata = {
-  title: 'Ticket Management',
-  description: 'Support ticket management dashboard',
+  title: 'Support Desk',
+  description: 'Support ticket management workspace',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }

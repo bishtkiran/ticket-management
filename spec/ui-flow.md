@@ -1,413 +1,876 @@
-# UI Flow Specification
+## 16. UI/UX Enhancement and Design Guidelines
 
-## 1. Overview
+### 16.1 Design Goal
 
-This document defines the user interface flow for the Support Ticket Management System. The interface is designed for a simple, clear support workflow with ticket creation, listing, viewing, updating, status changes, comments, search, and status-based filtering.
+The Support Ticket Management System should provide a clean, modern, responsive, and intuitive interface that allows users to quickly understand ticket status, find tickets, perform actions, and receive clear feedback.
 
-The UI should remain straightforward and user-friendly, with clear feedback for loading, empty states, validation, and API failure scenarios.
+The design should prioritize:
 
-## 2. Screen: Ticket List
+* Simplicity and ease of navigation
+* Clear visual hierarchy
+* Minimal number of clicks for common actions
+* Consistent components and interactions
+* Responsive behavior across desktop, tablet, and mobile
+* Clear loading, success, empty, and error states
+* Accessibility and keyboard usability
 
-### 2.1 Purpose
+---
 
-The Ticket List screen is the primary landing view for users. It shows all tickets and enables users to search, filter, create a new ticket, and open a ticket for more detail.
+### 16.2 Application Layout
 
-### 2.2 Layout
+The application should use a consistent application shell.
 
-- Header or page title: "Tickets"
-- Search input for keyword search
-- Status filter dropdown or segmented control
-- Create Ticket button
-- Ticket table or list view with summary rows
+Recommended structure:
 
-### 2.3 Ticket list item content
+```text
++--------------------------------------------------------------+
+| Logo / Application Name                  User / Profile      |
++--------------------------------------------------------------+
+|                                                              |
+|  Tickets                                      [+ Create]     |
+|                                                              |
+|  [Search tickets...] [Status ▼]                             |
+|                                                              |
+|  +---------+ +-------------+ +----------+ +----------+      |
+|  |  Total  | |    Open     | | In Prog. | | Resolved |      |
+|  |   128   | |     42      | |    31    | |    38    |      |
+|  +---------+ +-------------+ +----------+ +----------+      |
+|                                                              |
+|  Ticket List                                                 |
+|  ----------------------------------------------------------  |
+|  ID     Title       Status       Priority    Assignee  Date  |
+|  ----------------------------------------------------------  |
+|  #1024  Login issue  OPEN        High        John      ...   |
+|  #1023  Payment      RESOLVED    Medium      Sarah     ...   |
+|                                                              |
+|                    < 1 2 3 4 5 >                             |
++--------------------------------------------------------------+
+```
 
-Each ticket row should display:
+The application should maintain consistent spacing, typography, button styles, and component behavior across all screens.
 
-- ticket identifier
-- title
-- current status
-- priority
-- assignee, if available
-- last updated time or creation time
+---
 
-### 2.4 User actions
+### 16.3 Ticket List Enhancement
 
-- Search by keyword
-- Filter by status
-- Open a ticket to view details
-- Create a new ticket
+The Ticket List should be the main workspace and should allow users to understand the overall ticket state at a glance.
 
-### 2.5 Pagination
+#### Recommended enhancements
 
-- If the ticket list API uses pagination, the UI should provide controls to navigate between result pages.
-- The UI should display the current page and available navigation options.
-- The UI should preserve the active search and status filter when changing pages.
-- Pagination controls should be disabled while the corresponding request is loading.
-### 2.6 Loading state
+Add summary cards above the ticket list:
 
-- Show a spinner, skeleton rows, or loading text while tickets are being fetched.
-- Disable related controls while the list is loading if needed.
+* Total Tickets
+* Open
+* In Progress
+* Resolved
+* Closed
+* Cancelled
 
-### 2.7 Empty state
+The cards should be clickable where appropriate and can apply the corresponding status filter.
 
-- If no tickets exist, show a friendly empty state such as:
-  - "No tickets found"
-  - "Create a new ticket to get started"
-- If a search or filter returns no results, show a related empty state such as:
-  - "No tickets match your search"
-  - "No tickets found for the selected status"
+Example:
 
-### 2.8 Validation and API errors
+```text
+Total       Open        In Progress       Resolved
+ 128         42             31               38
 
-- If the search request fails, show a non-blocking error message.
-- If the ticket list request fails, show a clear error banner or inline message.
-- Do not display technical backend details to the end user.
+Closed      Cancelled
+  12            5
+```
 
-## 3. Flow: Create Ticket
+The summary values should be retrieved from the backend where supported. If the backend does not provide aggregate counts, the UI should not calculate misleading totals from a paginated subset.
 
-### 3.1 Trigger
+---
 
-Triggered from the Ticket List screen via the "Create Ticket" button.
+### 16.4 Search and Filter Area
 
-### 3.2 Form fields
+The search and filter controls should be visually grouped.
 
-- Title
-- Description
-- Priority
-- Assignee (optional depending on workflow design)
+Recommended layout:
 
-### 3.3 Validation
+```text
+[ 🔍 Search tickets by title or description... ]
 
-- Title is required.
-- Description is required.
-- Priority must be a valid supported value.
-- Assignee, if included, must be valid when provided.
+[ All Statuses ▼ ] [ Priority ▼ ] [ Assignee ▼ ]     [Clear Filters]
+```
 
-### 3.4 Error handling
+The UI should:
 
-- Display inline validation errors next to invalid fields.
-- Show a top-level form error if the backend rejects the create request.
-- Do not leave the user guessing; show a clear message such as "Unable to create ticket. Please check the details and try again."
+* Provide a clear search icon.
+* Show placeholder text explaining what can be searched.
+* Provide a clear/reset option when filters are active.
+* Display active filters as removable chips where appropriate.
+* Preserve filters when navigating through pagination.
+* Preserve filters when returning from Ticket Details.
+* Avoid sending unnecessary API requests for every keystroke unless debouncing is implemented.
+* Use a debounce mechanism for search if search is triggered automatically.
+* Provide a visible indication when filters are active.
 
-### 3.5 Success behaviour
+Example:
 
-- On successful creation, the user is returned to the Ticket List screen.
-- The UI must refresh or re-fetch the ticket list after successful creation.
-- The newly created ticket should be available in the refreshed list.
-- The created ticket must have an initial status of `OPEN`.
+```text
+Search: payment
+Filters: [OPEN ×] [High Priority ×]
 
-### 3.6 Loading state
+Showing 8 matching tickets
+```
 
-- Disable the submit button while creation is in progress.
-- Show a loading state such as "Creating ticket...".
+---
 
-## 4. Screen: Ticket Details
+### 16.5 Ticket Table Design
 
-### 4.1 Purpose
+Each ticket should be presented as a clean and scannable row.
 
-The Ticket Details screen shows the complete information for a selected ticket and provides actions to update the ticket, change status, and add comments.
+Recommended columns:
 
-### 4.2 Content
+| Column    | Description                     |
+| --------- | ------------------------------- |
+| Ticket ID | Unique ticket identifier        |
+| Title     | Ticket title                    |
+| Status    | Status badge                    |
+| Priority  | Priority badge                  |
+| Assignee  | Assigned user                   |
+| Updated   | Relative or formatted timestamp |
+| Action    | View/details action             |
 
-- Ticket title
-- Ticket description
-- Current status
-- Priority
-- Assignee
-- Creation timestamp
-- Updated timestamp
-- Comments list
+Example:
 
-### 4.3 User actions
+```text
+#TK-1024
+Payment failure
+[OPEN]
+[HIGH]
+John Smith
+5 min ago
+                         [View →]
+```
 
-- Edit Ticket
-- Change Status
-- Add Comment
-- Return to the Ticket List
+The entire row may be clickable, while the primary interaction should remain accessible through an explicit action.
 
-### 4.4 Loading state
+---
 
-- Display a spinner or loading placeholder while the ticket detail is being fetched.
-- If the ticket cannot be loaded, show a clear error state.
+### 16.6 Priority Visualization
 
-### 4.5 Error state
+Priority should have clear but accessible visual styling.
 
-- If the selected ticket is not found, show a not-found state with a message such as "Ticket not found" and a way to return to the list.
-- If the fetch fails, show a meaningful error message and a retry option when appropriate.
+Recommended priority levels:
 
-## 5. Flow: Edit Ticket
+* Low
+* Medium
+* High
+* Critical, if supported by the backend
 
-### 5.1 Trigger
+Example:
 
-Triggered from the Ticket Details screen through an "Edit Ticket" action.
+```text
+LOW       ●
+MEDIUM    ●
+HIGH      ●
+CRITICAL  ●
+```
 
-### 5.2 Form fields
+Do not rely on color alone to communicate priority. The text label should always be visible.
 
-- Title
-- Description
-- Priority
-- Assignee
+---
 
-The UI must respect the ticket's current lifecycle state when determining whether ticket fields can be edited.
+### 16.7 Status Badge Design
 
-Unless the business rules explicitly allow editing terminal tickets, tickets in `CLOSED` or `CANCELLED` state should be treated as read-only.
+Use consistent badges throughout the application.
 
-### 5.3 Validation
+Recommended visual treatment:
 
-- Title must not be blank.
-- Description must not be blank.
-- Priority must be valid.
-- Assignee must be valid when provided.
+```text
+[ OPEN ]
+[ IN PROGRESS ]
+[ RESOLVED ]
+[ CLOSED ]
+[ CANCELLED ]
+```
 
-### 5.4 Loading state
+Each status should have:
 
-- Show a loading indicator while the update request is in progress.
-- Disable form submission while saving.
+* Distinct visual styling
+* Readable text
+* Consistent shape and padding
+* Accessible contrast
+* Consistent usage across list, details, and forms
 
-### 5.5 Validation errors
+The same status should always look the same throughout the application.
 
-- Show inline errors next to invalid form fields.
-- Show a general form-level error if the backend rejects the update.
+---
 
-### 5.6 API errors
+### 16.8 Create Ticket UI
 
-- Show a clear error alert if the update request fails.
-- Preserve the form values if possible so the user can correct them.
+The Create Ticket flow should use a dedicated form page or modal depending on the application's screen size and complexity.
 
-### 5.7 Success behaviour
+Recommended form:
 
-- Save the updated values.
-- Return to the Ticket Details screen with the updated data.
+```text
+Create New Ticket
 
-## 6. Flow: Change Status
+Title *
+[________________________________________]
 
-### 6.1 Trigger
+Description *
+[________________________________________
+ ________________________________________]
 
-Triggered from the Ticket Details screen through a status action or status selector.
+Priority *
+[ Select priority ▼ ]
 
-### 6.2 Status model
+Assignee
+[ Select assignee ▼ ]
 
-Valid states:
+              [Cancel] [Create Ticket]
+```
 
-- OPEN
-- IN_PROGRESS
-- RESOLVED
-- CLOSED
-- CANCELLED
+Enhancements:
 
-### 6.3 Allowed transitions
+* Mark required fields clearly.
+* Show validation immediately after interaction or submission.
+* Display character limits where applicable.
+* Provide helpful placeholders.
+* Disable submission while the request is running.
+* Preserve entered values if an API request fails.
+* Display a success toast after creation.
+* Redirect the user to the created ticket or ticket list based on the UX decision.
 
-- OPEN -> IN_PROGRESS
-- IN_PROGRESS -> RESOLVED
-- RESOLVED -> CLOSED
-- OPEN -> CANCELLED
-- IN_PROGRESS -> CANCELLED
+Example success message:
 
-### 6.4 Status transition actions
+```text
+✓ Ticket #TK-1024 created successfully.
+```
 
-- The UI should display only the status actions that are valid for the ticket's current state.
-- The UI may prevent users from selecting invalid transitions.
-- The backend remains the authoritative source for transition validation.
-- The UI must handle a `409 Conflict` response if the backend rejects a transition.
+---
 
-Valid actions:
+### 16.9 Ticket Details Page
 
-- `OPEN` -> `IN_PROGRESS`
-- `OPEN` -> `CANCELLED`
-- `IN_PROGRESS` -> `RESOLVED`
-- `IN_PROGRESS` -> `CANCELLED`
-- `RESOLVED` -> `CLOSED`
+The Ticket Details screen should provide a clear overview of the ticket and its lifecycle.
 
-No status-change action should be offered for `CLOSED` or `CANCELLED`.
+Recommended layout:
 
-### 6.5 Confirmation for terminal transitions
+```text
+← Back to Tickets
 
-- The UI should request confirmation before performing a transition that moves the ticket into a terminal state.
-- Confirmation should be required for:
-  - `OPEN -> CANCELLED`
-  - `IN_PROGRESS -> CANCELLED`
-  - `RESOLVED -> CLOSED`
-- The confirmation message should clearly identify that the action changes the ticket to a terminal state.
-- Cancelling the confirmation must leave the ticket unchanged.
-- The backend must still validate the transition after confirmation.
+#TK-1024                         [OPEN ▼]
 
-### 6.6 Status display
+Payment failure
 
-- Display the current ticket status clearly and consistently.
-- Use a badge, pill, or label with distinct colors or styling for each status.
-- Show status in a way that helps users quickly understand the ticket lifecycle.
+------------------------------------------------------------
 
-### 6.7 Validation and API errors
+Description
+Customer is unable to complete the payment.
 
-- If the user attempts an invalid transition, show a clear message such as:
-  - "This status change is not allowed for the current ticket state."
-- If the backend rejects the status update, surface an API error message without exposing internal details.
+------------------------------------------------------------
 
-### 6.8 Loading state
+Priority        High
+Assignee        John Smith
+Created         24 Sep 2026, 10:30 AM
+Last Updated    24 Sep 2026, 11:45 AM
 
-- Show a loading indicator or disabled state during status submission.
+------------------------------------------------------------
 
-### 6.9 Terminal-state behaviour
+Actions
 
-- `CLOSED` and `CANCELLED` are terminal states.
-- A ticket in `CLOSED` state must not provide an action to reopen or change its status.
-- A ticket in `CANCELLED` state must not provide an action to reopen or change its status.
-- The UI may present terminal tickets as read-only with respect to status changes.
-- The backend remains authoritative and must reject invalid transitions even if the UI does not expose those actions.
+[Edit Ticket]  [Change Status]
 
-## 7. Flow: Add Comment
+------------------------------------------------------------
 
-### 7.1 Trigger
+Comments
 
-Triggered from the Ticket Details screen through an "Add Comment" action or comment form.
+John Smith
+24 Sep 2026, 11:30 AM
+Investigating the payment issue.
 
-### 7.2 Form fields
+Sarah
+24 Sep 2026, 11:45 AM
+Payment gateway logs have been checked.
 
-- Comment text
+------------------------------------------------------------
 
-### 7.3 Validation
+Add Comment
 
-- Comment content is required.
-- Comment content must not be empty or whitespace-only.
-- The ticket must exist.
-- Whether comments are allowed on `CLOSED` or `CANCELLED` tickets must follow the application's business rule.
-- If comments are not allowed on terminal tickets, the UI must disable the comment form for `CLOSED` and `CANCELLED` tickets.
-- The backend must remain authoritative for this rule.
+[ Write a comment...                              ]
 
-### 7.4 Loading state
+                                    [Add Comment]
+```
 
-- Disable the submit action while the comment is being posted.
-- Show a loading indicator such as "Adding comment..."
+Important information such as status, priority, and assignee should be visually prominent.
 
-### 7.5 Validation errors
+---
 
-- Show inline validation for an empty or invalid comment.
+### 16.10 Ticket Activity / Timeline
 
-### 7.6 API errors
+Where practical, the ticket detail page should present ticket activity as a timeline.
 
-- Show a generic error such as "Unable to add comment. Please try again."
-- Keep the form present so the user can correct the input.
+Example:
 
-### 7.7 Success behaviour
+```text
+● Ticket created
+│  10:30 AM
+│
+● Assigned to John Smith
+│  10:35 AM
+│
+● Status changed to IN_PROGRESS
+│  10:40 AM
+│
+● Comment added
+   11:20 AM
+```
 
-- Append the new comment to the comments list.
-- Preserve ticket detail view context after success.
+This provides users with an easy-to-understand history of important ticket actions.
 
-## 8. Search
+If activity history is not available from the backend, this component should not be introduced as a source of fabricated information.
 
-### 8.1 Purpose
+---
 
-Search allows users to find tickets by keyword.
+### 16.11 Change Status Interaction
 
-### 8.2 Controls
+Status changes should use a clear action control.
 
-- Search input in the Ticket List header
-- Search trigger by button or on input depending on UX design
+Example:
 
-### 8.3 Behaviour
+```text
+Current Status: [ IN_PROGRESS ▼ ]
 
-- Search matches ticket title and description according to the backend API contract.
-- When the search field contains a valid keyword, the UI calls the search API.
-- When the search field is blank, the UI uses the normal ticket-list API without a keyword.
-- The UI must not send an empty keyword to an endpoint that requires a non-empty keyword.
-- If the backend returns no matches, show an appropriate empty state.
+Available actions:
 
-### 8.4 Validation and errors
+→ RESOLVED
+→ CANCELLED
+```
 
-- Empty search values should be treated as a normal list request or ignored gracefully.
-- Display a clear error message if the search request fails.
+For terminal transitions, show a confirmation dialog.
 
-## 9. Status filtering
+Example:
 
-### 9.1 Purpose
+```text
+Close Ticket?
 
-Users can filter tickets by current status.
+This will move ticket #TK-1024 to CLOSED.
+Closed tickets cannot be reopened.
 
-### 9.2 Controls
+                    [Cancel] [Close Ticket]
+```
 
-- Status dropdown or filter buttons for each valid status.
+For cancellation:
 
-### 9.3 Supported values
+```text
+Cancel Ticket?
 
-Ticket status values:
+Are you sure you want to cancel this ticket?
+This action will move the ticket to CANCELLED.
 
-- `OPEN`
-- `IN_PROGRESS`
-- `RESOLVED`
-- `CLOSED`
-- `CANCELLED`
+                    [Keep Ticket] [Cancel Ticket]
+```
 
-The UI should also provide an `All statuses` option.
+The confirmation dialog should clearly distinguish destructive or terminal actions from normal actions.
 
-`All statuses` means that no `status` query parameter is sent to the backend.
+---
 
-### 9.4 Behaviour
+### 16.12 Edit Ticket UI
 
-- Filtering should display only tickets matching the selected status.
-- If no tickets match, show a filtered empty state.
+The Edit Ticket screen should reuse the same visual structure as Create Ticket to provide consistency.
 
-### 9.5 Validation and errors
+Example:
 
-- If the filter value is invalid, show a clear error and reset to the default state if appropriate.
-- If the backend returns an error, show a non-blocking message.
+```text
+Edit Ticket
 
-## 10. Status display conventions
+Title *
+[ Payment failure________________________ ]
 
-The UI should present statuses in a consistent and clear manner.
+Description *
+[ Customer is unable to complete payment.
+  _______________________________________ ]
 
-- OPEN: neutral or open state styling
-- IN_PROGRESS: active/in-progress styling
-- RESOLVED: successful or complete styling
-- CLOSED: final or closed styling
-- CANCELLED: cancelled/secondary styling
+Priority *
+[ HIGH ▼ ]
 
-Use a consistent badge, label, or color scheme throughout the app.
+Assignee
+[ John Smith ▼ ]
 
-## 11. Validation error patterns
+                 [Cancel] [Save Changes]
+```
 
-Validation errors should be shown in a consistent way across screens:
+When a ticket is `CLOSED` or `CANCELLED`, fields should be read-only unless the business rules explicitly permit editing.
 
-- Inline text under the relevant field
-- Form-level summary for multiple errors
-- Clear and actionable wording
+---
+
+### 16.13 Comment UI
+
+The comment section should make adding and reading comments simple.
+
+Recommended design:
+
+```text
+Comments (5)
+
+┌─────────────────────────────────────────┐
+│ John Smith                              │
+│ 24 Sep 2026, 11:30 AM                   │
+│                                         │
+│ Investigating the payment issue.        │
+└─────────────────────────────────────────┘
+
+Add a comment
+
+[ Write your comment here...              ]
+[                                          ]
+
+                         [Add Comment]
+```
+
+After successful submission:
+
+* Clear the comment field.
+* Append the comment immediately if the API response contains the created comment.
+* Otherwise refresh the comment list.
+* Display a success notification.
+
+---
+
+### 16.14 Loading States
+
+Every API-driven interaction should have an appropriate loading state.
+
+Recommended patterns:
+
+#### Ticket List
+
+Use skeleton rows:
+
+```text
+████████  ███████████████  ██████  █████
+████████  ███████████████  ██████  █████
+████████  ███████████████  ██████  █████
+```
+
+#### Form Submission
+
+```text
+[ Creating Ticket... ]
+```
+
+#### Status Update
+
+```text
+[ Updating... ]
+```
+
+#### Comment Submission
+
+```text
+[ Adding Comment... ]
+```
+
+Avoid showing multiple competing spinners for the same operation.
+
+---
+
+### 16.15 Toast Notifications
+
+Use non-blocking toast notifications for successful background actions.
 
 Examples:
 
-- "Title is required."
-- "Description cannot be blank."
-- "Please select a valid status."
-- "This status change is not allowed for the current ticket state."
+```text
+✓ Ticket created successfully.
+✓ Ticket updated successfully.
+✓ Status updated successfully.
+✓ Comment added successfully.
+```
 
-## 12. API error patterns
+Error toasts can be used for recoverable API failures:
 
-API failures should be presented in a user-friendly way:
+```text
+Unable to update the ticket. Please try again.
+```
 
-- For network or server errors: show a generic alert such as "Unable to load tickets. Please try again."
-- For not-found errors: show a not-found state for the ticket or redirect to the list if appropriate.
-- For invalid state transitions: show a business-rule message that explains the user cannot make that status change.
+Important validation errors should remain visible near the affected field rather than being communicated only through a toast.
 
-## 13. API error mapping
+---
 
-The UI should map API responses to user-friendly messages without exposing internal implementation details.
+### 16.16 Empty States
 
-| HTTP status | UI behaviour |
-| --- | --- |
-| `400 Bad Request` | Display validation or invalid-request feedback |
-| `404 Not Found` | Display a not-found state for the requested ticket |
-| `409 Conflict` | Display the business-rule error, especially for invalid status transitions |
-| `422 Unprocessable Entity` | Display business validation feedback when used by the API |
-| `500 Internal Server Error` | Display a generic server-error message |
-| Network failure | Display a retryable connection/error message |
+Empty states should explain what happened and what the user can do next.
 
-Field-level validation errors should be displayed next to the relevant fields when the API provides field information.
+#### No tickets
 
-## 14. Accessibility and clarity
+```text
+        🎫
 
-- Ensure all actions and error messages are readable and accessible.
-- Use labels, visible focus states, and clear call-to-action wording.
-- Keep the UI simple and consistent across screens.
+No tickets found
 
-## 15. Scope note
+Create your first support ticket to get started.
 
-This document defines the user flows and interface behavior for the Support Ticket Management System. It specifies the primary screens, states, validation expectations, feedback patterns, and status-management behavior, without prescribing implementation code.
+        [+ Create Ticket]
+```
+
+#### No search results
+
+```text
+        🔍
+
+No tickets match your search.
+
+Try changing your search term or clearing the filters.
+
+        [Clear Filters]
+```
+
+#### No comments
+
+```text
+No comments yet.
+
+Add a comment to start the conversation.
+```
+
+---
+
+### 16.17 Error States
+
+Error states should provide a clear recovery action.
+
+Example:
+
+```text
+Unable to load tickets
+
+Something went wrong while loading the tickets.
+
+                 [Try Again]
+```
+
+For a ticket that no longer exists:
+
+```text
+Ticket not found
+
+The ticket may have been deleted or is no longer available.
+
+                 [Back to Tickets]
+```
+
+Technical stack traces, database errors, API URLs, and internal exception details must never be exposed to end users.
+
+---
+
+### 16.18 Confirmation Dialogs
+
+Confirmation dialogs should only be used for actions where accidental execution could have a meaningful consequence.
+
+Use confirmation for:
+
+* Moving a ticket to `CANCELLED`
+* Moving a ticket to `CLOSED`
+* Other destructive actions introduced in future workflows
+
+Avoid unnecessary confirmation dialogs for:
+
+* Opening a ticket
+* Editing a ticket
+* Adding a comment
+* Applying a search filter
+
+---
+
+### 16.19 Responsive Design
+
+The application should support:
+
+* Desktop
+* Tablet
+* Mobile
+
+On smaller screens:
+
+* Convert the ticket table into cards where necessary.
+* Stack search and filter controls vertically.
+* Keep primary actions visible.
+* Make buttons touch-friendly.
+* Avoid horizontal scrolling where possible.
+* Allow long ticket titles to wrap naturally.
+* Move secondary information below primary ticket information.
+
+Example mobile ticket card:
+
+```text
+#TK-1024
+
+Payment failure
+
+[OPEN] [HIGH]
+
+Assignee
+John Smith
+
+Updated
+5 min ago
+
+[View Ticket →]
+```
+
+---
+
+### 16.20 Navigation and User Flow
+
+The primary user flow should remain simple:
+
+```text
+Ticket List
+    │
+    ├── Create Ticket
+    │       │
+    │       └── Ticket Created
+    │              │
+    │              └── Ticket List / Ticket Details
+    │
+    └── Select Ticket
+            │
+            └── Ticket Details
+                    │
+                    ├── Edit Ticket
+                    │
+                    ├── Change Status
+                    │
+                    └── Add Comment
+```
+
+The user should always have an obvious way to return to the Ticket List.
+
+---
+
+### 16.21 Filter and Search Persistence
+
+The UI should preserve the user's current list context where practical.
+
+For example:
+
+1. User searches for `payment`.
+2. User selects `OPEN`.
+3. User opens a ticket.
+4. User returns to the Ticket List.
+5. Search and status filters remain active.
+
+The UI should restore:
+
+* Search keyword
+* Selected status
+* Current page where appropriate
+* Relevant sorting state, if sorting is introduced
+
+---
+
+### 16.22 Sorting
+
+If sorting is supported by the backend, provide sorting options such as:
+
+* Recently updated
+* Recently created
+* Priority
+* Title
+
+Example:
+
+```text
+Sort by: [Recently Updated ▼]
+```
+
+Sorting should not be implemented purely on the client if the ticket list is paginated by the backend unless the complete dataset is available.
+
+---
+
+### 16.23 Accessibility
+
+The UI should follow accessible design practices.
+
+Requirements:
+
+* Every form field must have a visible label.
+* Buttons must have meaningful accessible names.
+* Keyboard navigation must be supported.
+* Focus states must be visible.
+* Dialogs must trap focus appropriately.
+* Status and priority must not rely solely on color.
+* Error messages should be associated with their respective fields.
+* Loading and success messages should be announced appropriately where required.
+* Text should maintain sufficient contrast.
+* Interactive elements should have adequate touch/click targets.
+* Tables should use appropriate semantic markup.
+
+---
+
+### 16.24 Design System
+
+Use a consistent design system across the application.
+
+Define reusable components for:
+
+* Buttons
+* Inputs
+* Selects
+* Textareas
+* Status badges
+* Priority badges
+* Cards
+* Tables
+* Modals
+* Toasts
+* Alerts
+* Empty states
+* Loading skeletons
+* Pagination
+* Confirmation dialogs
+
+Avoid creating different visual implementations of the same component on different screens.
+
+---
+
+### 16.25 Visual Hierarchy
+
+The UI should prioritize information in the following order:
+
+1. Ticket title and identifier
+2. Current status
+3. Primary actions
+4. Description
+5. Priority and assignee
+6. Dates and metadata
+7. Comments/activity
+8. Secondary actions
+
+Primary actions should use a visually prominent button style, while destructive or terminal actions should use appropriate warning/destructive styling.
+
+---
+
+### 16.26 Recommended Interaction Rules
+
+The following interaction rules should be followed consistently:
+
+| Interaction     | Expected UI behaviour               |
+| --------------- | ----------------------------------- |
+| Create Ticket   | Disable submit while saving         |
+| Edit Ticket     | Preserve values if update fails     |
+| Change Status   | Confirm terminal transitions        |
+| Add Comment     | Disable submit while posting        |
+| Search          | Debounce if triggered automatically |
+| Filter          | Preserve selected value             |
+| Pagination      | Preserve search/filter state        |
+| API Failure     | Show actionable error               |
+| 404             | Show not-found state                |
+| 409             | Show business-rule message          |
+| 500             | Show generic server error           |
+| Network Failure | Show retry option                   |
+| Empty Result    | Show contextual empty state         |
+
+---
+
+### 16.27 Suggested UI Enhancement Roadmap
+
+Implementation can be approached in the following order:
+
+#### Phase 1 — Core UI
+
+1. Create application shell.
+2. Build Ticket List screen.
+3. Implement search.
+4. Implement status filtering.
+5. Implement pagination.
+6. Build Create Ticket form.
+7. Build Ticket Details screen.
+
+#### Phase 2 — Ticket Management
+
+8. Implement Edit Ticket.
+9. Implement status transitions.
+10. Add terminal-state confirmation dialogs.
+11. Implement Add Comment.
+12. Add API validation and error handling.
+
+#### Phase 3 — UX Improvements
+
+13. Add summary cards.
+14. Add status and priority badges.
+15. Add skeleton loading states.
+16. Add toast notifications.
+17. Improve empty states.
+18. Add reusable confirmation dialogs.
+19. Preserve search/filter state.
+20. Add responsive mobile layouts.
+
+#### Phase 4 — Quality and Accessibility
+
+21. Add keyboard navigation.
+22. Add visible focus states.
+23. Validate color contrast.
+24. Test screen-reader behavior.
+25. Test responsive layouts.
+26. Test all loading, empty, success, and error states.
+27. Verify invalid status transitions.
+28. Verify terminal ticket behavior.
+29. Verify pagination with active filters.
+30. Perform end-to-end UI validation against the API contract.
+
+---
+
+### 16.28 Final UI Acceptance Criteria
+
+The UI should be considered complete when:
+
+* Users can create, view, edit, and manage tickets through a clear workflow.
+* Users can search and filter tickets easily.
+* Ticket status is immediately visible.
+* Valid and invalid status transitions are handled correctly.
+* Terminal tickets are clearly identified and protected from invalid actions.
+* All forms provide clear validation feedback.
+* API failures provide meaningful recovery options.
+* Loading states are visible for asynchronous operations.
+* Empty states provide useful next actions.
+* Success actions provide clear confirmation.
+* The interface works on desktop, tablet, and mobile.
+* Keyboard navigation and accessibility requirements are supported.
+* The visual design is consistent across all screens.
+* No internal backend or technical error information is exposed to users.
+* The UI remains aligned with the backend as the authoritative source for validation and ticket state.
+
+---
+
+## 17. Recommended Overall UI Experience
+
+The final experience should feel like a lightweight support-management dashboard rather than a collection of independent forms.
+
+The preferred experience is:
+
+```text
+                         TICKETS
+                            │
+            ┌───────────────┴───────────────┐
+            │                               │
+      Summary Cards                    + Create Ticket
+            │                               │
+            └───────────────┬───────────────┘
+                            │
+                   Search + Filters
+                            │
+                            ▼
+                      Ticket List
+                            │
+                    Select a Ticket
+                            │
+                            ▼
+                    Ticket Details
+                    /      |       \
+                   /       |        \
+                  ▼        ▼         ▼
+               Edit    Change     Add Comment
+                        Status
+                          │
+                    Confirmation
+                          │
+                          ▼
+                    Updated Ticket
+```
+
+The key principle should be to **keep the UI simple for the common path while providing clear guidance for validation, errors, status transitions, and exceptional scenarios**.

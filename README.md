@@ -23,14 +23,15 @@ Copy `.env.example` values into your environment and change them for your databa
 
 | Variable | Local default | Purpose |
 | --- | --- | --- |
-| `APP_PROFILE` | `local` | Spring profile (`local`, `test`, or `prod`) |
+| `APP_PROFILE` | `local` | Spring profile (`dev`, `local`, `test`, or `prod`) |
 | `SERVER_PORT` | `8080` | Backend HTTP port |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/ticket_management` | JDBC database URL |
 | `DB_USERNAME` | `postgres` | Database username |
 | `DB_PASSWORD` | `postgres` | Database password; override outside local development |
+| `APP_DATA_DIR` | `~/.ticket-management/data` | Persistent H2 storage directory for the `dev` and `test` profiles |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080/api` | Frontend API base URL |
 
-The `prod` profile requires database variables from the environment and validates the existing schema. The `test` profile uses H2; integration tests override it with an isolated in-memory database.
+The `local` and `prod` profiles use PostgreSQL. The `dev` profile provides a zero-setup, file-backed H2 database that survives restarts. The `test` profile is also file-backed for backwards compatibility, while automated integration tests override it with an isolated in-memory database.
 
 ## Run locally
 
@@ -40,6 +41,15 @@ Create the PostgreSQL database, export the database settings, and start the back
 cd backend
 mvn spring-boot:run
 ```
+
+For lightweight development without PostgreSQL, use the persistent H2 profile:
+
+```bash
+cd backend
+APP_PROFILE=dev mvn spring-boot:run
+```
+
+Tickets and comments are stored under `~/.ticket-management/data` by default. Set `APP_DATA_DIR` to an absolute directory to use another location. Always restart with the same profile: PostgreSQL (`local`) and H2 (`dev`) are separate databases.
 
 In another terminal, start the frontend:
 

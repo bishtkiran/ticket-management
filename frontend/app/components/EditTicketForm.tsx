@@ -11,7 +11,7 @@ import {
   validateTicketForm,
 } from '@/lib/validation';
 
-export default function EditTicketForm({ ticket }: { ticket: Ticket }) {
+export default function EditTicketForm({ ticket, returnPath = '/' }: { ticket: Ticket; returnPath?: string }) {
   const router = useRouter();
   const [title, setTitle] = useState(ticket.title);
   const [description, setDescription] = useState(ticket.description);
@@ -45,7 +45,7 @@ export default function EditTicketForm({ ticket }: { ticket: Ticket }) {
         priority: priority as TicketPriority,
         assignee: assignee.trim(),
       });
-      router.push(`/tickets/${ticket.id}`);
+      router.push(`/tickets/${ticket.id}?from=${encodeURIComponent(returnPath)}&notice=updated`);
       router.refresh();
     } catch (error: unknown) {
       if (error instanceof ApiClientError) {
@@ -67,18 +67,18 @@ export default function EditTicketForm({ ticket }: { ticket: Ticket }) {
     <form className="ticket-form" onSubmit={submitForm} noValidate>
       {formError && <p className="form-error" role="alert">{formError}</p>}
       <label className="form-field">
-        <span>Title</span>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} onBlur={(event) => validateField('title', event.target.value)} aria-invalid={Boolean(errors.title)} />
+        <span>Title <span aria-hidden="true">*</span></span>
+        <input value={title} onChange={(event) => setTitle(event.target.value)} onBlur={(event) => validateField('title', event.target.value)} placeholder="Briefly describe the issue" aria-invalid={Boolean(errors.title)} required />
         {errors.title && <small className="field-error">{errors.title}</small>}
       </label>
       <label className="form-field">
-        <span>Description</span>
-        <textarea value={description} onChange={(event) => setDescription(event.target.value)} onBlur={(event) => validateField('description', event.target.value)} rows={6} aria-invalid={Boolean(errors.description)} />
+        <span>Description <span aria-hidden="true">*</span></span>
+        <textarea value={description} onChange={(event) => setDescription(event.target.value)} onBlur={(event) => validateField('description', event.target.value)} rows={6} placeholder="Include the context and steps needed to understand the issue" aria-invalid={Boolean(errors.description)} required />
         {errors.description && <small className="field-error">{errors.description}</small>}
       </label>
       <div className="form-grid">
         <label className="form-field">
-          <span>Priority</span>
+          <span>Priority <span aria-hidden="true">*</span></span>
           <select
             value={priority}
             onChange={(event) => {
@@ -98,7 +98,7 @@ export default function EditTicketForm({ ticket }: { ticket: Ticket }) {
         </label>
       </div>
       <div className="form-actions">
-        <button className="secondary-button" type="button" onClick={() => router.push(`/tickets/${ticket.id}`)}>Cancel</button>
+        <button className="secondary-button" type="button" onClick={() => router.push(`/tickets/${ticket.id}?from=${encodeURIComponent(returnPath)}`)}>Cancel</button>
         <button className="primary-button" type="submit" disabled={isSaving}>{isSaving ? 'Saving ticket...' : 'Save changes'}</button>
       </div>
     </form>

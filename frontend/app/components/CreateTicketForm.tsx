@@ -41,13 +41,13 @@ export default function CreateTicketForm() {
 
     setIsSubmitting(true);
     try {
-      await createTicket({
+      const createdTicket = await createTicket({
         title: title.trim(),
         description: description.trim(),
         priority,
         ...(assignee.trim() ? { assignee: assignee.trim() } : {}),
       });
-      router.push('/');
+      router.push(`/tickets/${createdTicket.id}?notice=created`);
       router.refresh();
     } catch (error: unknown) {
       if (error instanceof ApiClientError) {
@@ -72,20 +72,20 @@ export default function CreateTicketForm() {
       {formError && <p className="form-error" role="alert">{formError}</p>}
 
       <label className="form-field">
-        <span>Title</span>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} onBlur={(event) => validateField('title', event.target.value)} aria-invalid={Boolean(errors.title)} />
+        <span>Title <span aria-hidden="true">*</span></span>
+        <input value={title} onChange={(event) => setTitle(event.target.value)} onBlur={(event) => validateField('title', event.target.value)} placeholder="Briefly describe the issue" aria-invalid={Boolean(errors.title)} required />
         {errors.title && <small className="field-error">{errors.title}</small>}
       </label>
 
       <label className="form-field">
-        <span>Description</span>
-        <textarea value={description} onChange={(event) => setDescription(event.target.value)} onBlur={(event) => validateField('description', event.target.value)} rows={6} aria-invalid={Boolean(errors.description)} />
+        <span>Description <span aria-hidden="true">*</span></span>
+        <textarea value={description} onChange={(event) => setDescription(event.target.value)} onBlur={(event) => validateField('description', event.target.value)} rows={6} placeholder="Include the context and steps needed to understand the issue" aria-invalid={Boolean(errors.description)} required />
         {errors.description && <small className="field-error">{errors.description}</small>}
       </label>
 
       <div className="form-grid">
         <label className="form-field">
-          <span>Priority</span>
+          <span>Priority <span aria-hidden="true">*</span></span>
           <select
             value={priority}
             onChange={(event) => {
@@ -101,7 +101,7 @@ export default function CreateTicketForm() {
 
         <label className="form-field">
           <span>Assignee <small>(optional)</small></span>
-          <input value={assignee} onChange={(event) => setAssignee(event.target.value)} onBlur={(event) => validateField('assignee', event.target.value)} aria-invalid={Boolean(errors.assignee)} />
+          <input value={assignee} onChange={(event) => setAssignee(event.target.value)} onBlur={(event) => validateField('assignee', event.target.value)} placeholder="Name of the person responsible" aria-invalid={Boolean(errors.assignee)} />
           {errors.assignee && <small className="field-error">{errors.assignee}</small>}
         </label>
       </div>

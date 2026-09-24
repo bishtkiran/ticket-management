@@ -296,3 +296,720 @@ Relevant specs: requirements FR-001, FR-004 to FR-007, FR-011, BR-001, BR-002, B
 14. Documentation
 
 This ordering keeps the most critical backend rules—especially the state machine and validation—earlier in the process while leaving UI and documentation work after the API contract is stable.
+
+## 16. UI Design
+
+Redesign the existing Ticket Management / Support Desk ticket-detail page into a polished, modern SaaS support application.
+
+IMPORTANT:
+- Do NOT use a left sidebar.
+- Do NOT use green as the primary color.
+- Do NOT change backend functionality, APIs, routes, database logic, or existing business logic.
+- Only redesign the frontend UI/UX.
+- Keep all existing functionality working.
+- Do not create a generic admin dashboard.
+- The result should look like a premium production-ready customer support application.
+
+==================================================
+DESIGN DIRECTION
+==================================================
+
+Create a clean, modern, professional support-ticket interface inspired by products like Linear, Intercom, Zendesk, and modern SaaS applications.
+
+Visual characteristics:
+
+- Minimal
+- Premium
+- Clean
+- Spacious but not wasteful
+- Excellent typography
+- Strong visual hierarchy
+- Soft borders
+- Subtle shadows
+- Rounded corners
+- Modern icons
+- Compact information density
+- Professional enterprise SaaS appearance
+
+Use a LIGHT theme.
+
+Do NOT use:
+- Green branding
+- Huge typography
+- Giant empty spaces
+- Heavy gradients
+- Excessive shadows
+- Thick borders
+- Oversized cards
+- Old-fashioned dashboard styling
+- Serif fonts
+
+==================================================
+COLOR SYSTEM
+==================================================
+
+Use BLUE / INDIGO as the primary accent.
+
+Suggested palette:
+
+Background:
+#F6F8FC
+
+Main surface:
+#FFFFFF
+
+Primary:
+#4057D6
+
+Primary hover:
+#3348B8
+
+Primary light:
+#EEF1FF
+
+Text:
+#172033
+
+Secondary text:
+#667085
+
+Muted text:
+#98A2B3
+
+Border:
+#E6EAF0
+
+Success:
+#16A34A
+
+Warning:
+#F59E0B
+
+Danger:
+#EF4444
+
+Info:
+#3B82F6
+
+Use colors mainly for:
+- buttons
+- status badges
+- priority indicators
+- active states
+- small accents
+
+Do not make the entire page blue.
+
+==================================================
+GLOBAL LAYOUT
+==================================================
+
+Do NOT create a sidebar.
+
+Use a full-width application layout.
+
+Structure:
+
+--------------------------------------------------
+TOP HEADER
+--------------------------------------------------
+
+--------------------------------------------------
+BREADCRUMB
+--------------------------------------------------
+
+--------------------------------------------------
+TICKET HEADER
+--------------------------------------------------
+
+--------------------------------------------------
+MAIN CONTENT             RIGHT INFORMATION PANEL
+                          
+
+--------------------------------------------------
+DESCRIPTION
+--------------------------------------------------
+
+--------------------------------------------------
+STATUS ACTION
+--------------------------------------------------
+
+--------------------------------------------------
+CONVERSATION
+--------------------------------------------------
+
+==================================================
+TOP HEADER
+==================================================
+
+Create a clean horizontal header approximately 64px tall.
+
+Left side:
+
+Support Desk
+small headset/support icon
+
+Center:
+
+Search input:
+
+"Search tickets, users, or keywords..."
+
+Include a keyboard shortcut indicator such as:
+
+⌘ K
+
+Right side:
+
+Notification icon
+
+User avatar
+
+User name
+
+Dropdown arrow
+
+Example:
+
+Support Desk                         Search...        🔔   KB  Kiran Bisht ▾
+
+Header should have:
+- white background
+- subtle bottom border
+- sticky positioning if appropriate
+- no excessive height
+
+==================================================
+BREADCRUMB
+==================================================
+
+Below the header, create a compact breadcrumb:
+
+Support Desk  /  Tickets  /  TICKET-1024
+
+Use small muted typography.
+
+Do not make breadcrumbs visually dominant.
+
+==================================================
+TICKET HEADER
+==================================================
+
+Create a strong but compact ticket header.
+
+Small label:
+
+TICKET-1024
+
+Main title:
+
+Issue with Attendance
+
+Title should be approximately 30–34px.
+
+Below the title:
+
+[ Open ] [ High Priority ]
+
+Use rounded status badges.
+
+Open:
+light blue background
+blue text
+small blue dot
+
+High Priority:
+light red/pink background
+red text
+small alert icon
+
+Below badges:
+
+Not able to mark my attendance on the portal
+
+Use muted gray text.
+
+On the right side of the header show ticket metadata:
+
+Priority       High
+Assignee       HR
+Created        Sep 24, 2026, 7:18 PM
+Last updated   Sep 24, 2026, 7:18 PM
+
+Use small icons.
+
+Keep metadata compact.
+
+==================================================
+MAIN CONTENT WIDTH
+==================================================
+
+Use a centered max-width container around:
+
+1400px
+
+with comfortable horizontal padding.
+
+Use a two-column layout:
+
+MAIN CONTENT:
+approximately 70%
+
+RIGHT PANEL:
+approximately 30%
+
+Gap:
+24px
+
+On smaller screens, collapse into one column.
+
+==================================================
+DESCRIPTION CARD
+==================================================
+
+Create a clean card.
+
+Header:
+
+Description
+
+Use a small document icon.
+
+Content:
+
+Not able to mark my attendance on the portal
+
+Card requirements:
+
+- white background
+- 1px subtle border
+- 12–14px radius
+- 20–24px padding
+- subtle shadow
+- no excessive height
+
+==================================================
+STATUS ACTION BAR
+==================================================
+
+Create a compact horizontal action card.
+
+Left:
+
+Change status
+
+Dropdown:
+
+[ 🔵 Open             ▼ ]
+
+Right:
+
+[ Update status ]
+
+Primary button should use the blue/indigo accent.
+
+Button should be approximately 40–44px tall.
+
+Add:
+- hover state
+- disabled state
+- loading state
+- success feedback
+- error feedback
+
+Do not make the button huge.
+
+==================================================
+CONVERSATION
+==================================================
+
+Create a premium conversation section.
+
+Header:
+
+Conversation                         0 comments
+
+Use a chat/message icon.
+
+When there are no comments:
+
+Center an elegant empty state.
+
+Icon inside a soft circular background.
+
+Text:
+
+No comments yet
+
+Secondary text:
+
+Start the conversation by adding the first update to this ticket.
+
+Keep the empty state compact.
+
+Do NOT leave a giant empty white area.
+
+==================================================
+COMMENT COMPOSER
+==================================================
+
+At the bottom of the conversation card create a modern comment composer.
+
+Layout:
+
+Avatar
+
+Textarea:
+
+"Write an update for the support team..."
+
+Below textarea:
+
+Attach file
+Mention
+Emoji
+
+Right side:
+
+[ Comment ]
+
+The textarea should have:
+- subtle border
+- rounded corners
+- focus state
+- comfortable padding
+- appropriate minimum height
+
+The Comment button should be indigo/blue.
+
+==================================================
+RIGHT INFORMATION PANEL
+==================================================
+
+Create a right-side information column.
+
+Do NOT make it look like a traditional dashboard.
+
+Use 2–3 compact cards.
+
+CARD 1:
+
+Ticket Information
+
+Ticket ID       TICKET-1024
+Status          Open
+Priority        High
+Assignee        HR
+Created         Sep 24, 2026
+Last updated    Sep 24, 2026
+
+Use aligned labels and values.
+
+CARD 2:
+
+Quick Actions
+
+Change status          >
+Reassign ticket        >
+Add internal note      >
+
+Each row should have:
+- icon
+- text
+- subtle hover state
+- right arrow
+
+CARD 3:
+
+Related Information
+
+Customer       Internal
+Department     HR
+Category       Attendance
+Source         Portal
+
+Keep these cards compact.
+
+==================================================
+TYPOGRAPHY
+==================================================
+
+Use:
+
+Inter
+
+or:
+
+Plus Jakarta Sans
+
+Typography should feel modern and highly readable.
+
+Recommended sizes:
+
+Application name:
+16px
+
+Breadcrumb:
+13px
+
+Ticket ID:
+12px
+
+Ticket title:
+30–34px
+
+Section titles:
+16–18px
+
+Body:
+14–15px
+
+Metadata labels:
+12–13px
+
+Metadata values:
+13–14px
+
+Do not use giant text.
+
+Use font weights:
+400
+500
+600
+700
+
+Avoid using 800/900 excessively.
+
+==================================================
+CARDS
+==================================================
+
+Cards should have:
+
+border-radius: 12px
+
+border:
+1px solid #E6EAF0
+
+background:
+#FFFFFF
+
+shadow:
+very subtle
+
+Example visual philosophy:
+
+Border should define the card.
+Shadow should barely be noticeable.
+
+Do not make every section look like a floating giant box.
+
+==================================================
+ICONS
+==================================================
+
+Use a consistent icon library already available in the project.
+
+Prefer:
+Lucide
+Heroicons
+or the project's existing icon system.
+
+Use simple outline icons.
+
+Do not mix multiple icon styles.
+
+==================================================
+SPACING
+==================================================
+
+Use a consistent spacing scale.
+
+Prefer:
+
+4px
+8px
+12px
+16px
+20px
+24px
+32px
+
+Avoid arbitrary spacing.
+
+The current UI has too much empty vertical space.
+
+Make the content fit naturally inside a 900–1080px desktop viewport while still feeling comfortable.
+
+==================================================
+RESPONSIVE DESIGN
+==================================================
+
+Desktop:
+
+Top header
+Full-width content
+Main ticket content + right information panel
+
+Tablet:
+
+Right panel becomes narrower.
+
+Mobile:
+
+Single-column layout.
+
+Header becomes:
+
+Support Desk     🔔     Avatar
+
+Search becomes a separate row.
+
+Metadata becomes a grid.
+
+Right information cards move below the conversation.
+
+Status action becomes stacked when necessary.
+
+Comment composer should remain easy to use.
+
+==================================================
+INTERACTIONS
+==================================================
+
+Add polished micro-interactions:
+
+- button hover
+- button active state
+- dropdown animation
+- input focus ring
+- card hover where appropriate
+- status update loading
+- toast notification after successful update
+- comment submission feedback
+- smooth transitions
+
+Use short transitions around:
+
+150–200ms
+
+Do not over-animate the application.
+
+==================================================
+ACCESSIBILITY
+==================================================
+
+Ensure:
+
+- keyboard navigation
+- visible focus states
+- accessible buttons
+- accessible form labels
+- sufficient contrast
+- semantic HTML
+- status and priority are not communicated by color alone
+
+==================================================
+IMPORTANT UX IMPROVEMENTS
+==================================================
+
+The existing page currently feels like a basic CRUD page.
+
+Transform it into a real support-ticket workspace.
+
+The user should immediately understand:
+
+1. What ticket am I looking at?
+2. What is the current status?
+3. How urgent is it?
+4. Who owns it?
+5. What is the issue?
+6. What actions can I perform?
+7. What has happened in the conversation?
+8. Where can I add a response?
+
+The UI hierarchy should naturally answer those questions.
+
+==================================================
+IMPLEMENTATION REQUIREMENTS
+==================================================
+
+Before making changes:
+
+1. Inspect the existing frontend architecture.
+2. Identify the ticket-detail page.
+3. Identify reusable components.
+4. Preserve all existing functionality.
+5. Reuse the existing API calls.
+6. Do not modify backend code.
+
+Then redesign the frontend.
+
+Create reusable components where appropriate:
+
+- AppHeader
+- Breadcrumb
+- TicketHeader
+- StatusBadge
+- PriorityBadge
+- TicketMetadata
+- DescriptionCard
+- StatusActionBar
+- Conversation
+- CommentItem
+- CommentComposer
+- TicketInfoCard
+- QuickActions
+- EmptyState
+
+Use shared design tokens for:
+- colors
+- spacing
+- border radius
+- typography
+- shadows
+
+==================================================
+FINAL QUALITY BAR
+==================================================
+
+The final result should look like a polished commercial SaaS product.
+
+Think:
+
+"Modern support platform"
+
+NOT:
+
+"HTML form with cards"
+
+NOT:
+
+"basic admin dashboard"
+
+NOT:
+
+"green corporate portal"
+
+The primary visual identity should be BLUE / INDIGO with a neutral light background.
+
+No left sidebar.
+
+No green branding.
+
+No oversized heading.
+
+No unnecessary empty space.
+
+After implementation:
+
+1. Start the application.
+2. Open the ticket detail page.
+3. Check the UI at 1440x900.
+4. Check responsive behavior.
+5. Fix alignment issues.
+6. Fix spacing issues.
+7. Fix typography issues.
+8. Verify all existing buttons/forms/API interactions still work.
+9. Check browser console for errors.
+10. Iterate until the UI looks production-ready.
